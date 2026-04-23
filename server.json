@@ -4,6 +4,15 @@
   "title": "Cartograph",
   "description": "Local-first reusable implementation registry for AI agents and versioned widgets.",
   "version": "0.1.3",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/benteigland11/cartograph-mcp/main/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
   "repository": {
     "url": "https://github.com/benteigland11/cartograph-mcp",
     "source": "github"
