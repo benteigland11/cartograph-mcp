@@ -1,7 +1,7 @@
 # cartograph-mcp
 
 [![CI](https://github.com/benteigland11/cartograph-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/benteigland11/cartograph-mcp/actions/workflows/ci.yml)
-[![PyPI version](https://img.shields.io/pypi/v/cartograph-mcp.svg)](https://pypi.org/project/cartograph-mcp/)
+[![PyPI](https://img.shields.io/pypi/v/cartograph-cli?cacheSeconds=60)](https://pypi.org/project/cartograph-mcp/)
 
 An MCP server for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. Search, inspect, install, create, validate, check in, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
 
