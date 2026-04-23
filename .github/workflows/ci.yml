@@ -105,6 +105,7 @@ jobs:
           PY
 
       - name: Create and push tag
+        id: tagpush
         if: steps.tagcheck.outputs.exists == 'false' && steps.versionchange.outputs.changed == 'true'
         env:
           TAG: v${{ steps.version.outputs.version }}
@@ -113,3 +114,10 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG" -m "Release $TAG"
           git push origin "$TAG"
+
+      - name: Dispatch publish workflow
+        if: steps.tagpush.conclusion == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.version.outputs.version }}
+        run: gh workflow run pypi-publish.yml --ref "$TAG"
