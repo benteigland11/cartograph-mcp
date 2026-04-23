@@ -3,10 +3,19 @@ import json
 
 from mcp.types import TextContent
 
-from cg.backend_mcp_server_bridge_python.src.mcp_server_bridge import McpServerBridge
+from cartograph_mcp.bridge import McpServerBridge
 
 
-bridge = McpServerBridge("cartograph", version="0.1.1")
+SERVER_INSTRUCTIONS = """Cartograph preserves reusable implementation work across projects as widgets. Reusable means code, logic, tests, examples, models, geometry, hardware modules, or patterns that would be useful in another project, not just another file in the current project.
+
+Use this MCP for the Cartograph daily-driver surface: registry interaction, installed-widget management, project widget status, widget creation, widget validation, widget checkin, widget rating, custom validation rules, and core workflow config.
+
+This MCP is intentionally not the full Cartograph CLI. For commands or options not exposed here, use the shell and run `cartograph --help` or `cartograph <command> --help`. The CLI is the source of truth for the complete command surface.
+
+When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
+
+
+bridge = McpServerBridge("cartograph", version="0.1.1", instructions=SERVER_INSTRUCTIONS)
 
 DOMAINS = [
     "backend",
@@ -40,14 +49,18 @@ CONFIG_KEYS = [
     "show-unavailable",
     "publish-registry",
 ]
+RULE_ACTIONS = ["list", "init", "reset"]
+RULE_SCOPES = ["project", "global"]
 
 TOOL_SPECS = [
     {
         "name": "registry_widget",
         "description": (
-            "Interact with the Cartograph library / registry. "
-            "Actions: search requires query; inspect requires widget_id; "
-            "install requires widget_id; rate requires widget_ref and score."
+            "Registry-facing daily workflow for Cartograph widgets. "
+            "Use search before writing reusable logic, inspect before installing or editing, "
+            "install to add a widget to the current project, and rate to leave registry feedback. "
+            "Actions: search requires query; inspect requires widget_id; install requires widget_id; "
+            "rate requires widget_ref and score."
         ),
         "schema": {
             "action": {
@@ -77,9 +90,9 @@ TOOL_SPECS = [
     {
         "name": "installed_widget",
         "description": (
-            "Mutate widgets already installed in the current project. "
-            "Actions: upgrade requires widget_dir and optionally version; "
-            "uninstall requires widget_dir."
+            "Mutate widgets already installed in the current project under cg/<widget_id>/. "
+            "Use this for installed copies only; use registry_widget install for adding a new widget. "
+            "Actions: upgrade requires widget_dir and optionally version; uninstall requires widget_dir."
         ),
         "schema": {
             "action": {
@@ -97,7 +110,10 @@ TOOL_SPECS = [
     },
     {
         "name": "widget_status",
-        "description": "Check installed widget status in the current project or for one installed widget.",
+        "description": (
+            "Check health/status for installed widgets in the current project. "
+            "Omit widget_dir to scan all installed widgets; provide widget_dir to inspect one."
+        ),
         "schema": {
             "widget_dir": {"type": "string", "description": "Installed widget dir, or omit to scan all."},
             "page": {"type": "integer", "description": "1-indexed page for aggregate listing."},
@@ -107,7 +123,10 @@ TOOL_SPECS = [
     },
     {
         "name": "create_widget",
-        "description": "Scaffold a new widget. Use name for the slug only, not the full widget_id.",
+        "description": (
+            "Scaffold a new Cartograph widget. Use name for the slug only, not the full widget_id; "
+            "Cartograph combines domain + name + language."
+        ),
         "schema": {
             "name": {"type": "string", "description": "Widget slug, for example retry-backoff."},
             "domain": {"type": "string", "enum": DOMAINS, "description": "Widget domain."},
@@ -121,7 +140,7 @@ TOOL_SPECS = [
         "name": "validate_widget",
         "description": (
             "Run the full preflight / smoke pipeline without checking the widget into the library. "
-            "Use this as the dry run for checkin."
+            "Use this as the dry run for checkin before recording reusable widget changes."
         ),
         "schema": {
             "path": {"type": "string", "description": "Widget directory or widget ID with lib=true."},
@@ -132,6 +151,7 @@ TOOL_SPECS = [
         "name": "checkin_widget",
         "description": (
             "Run the full validation / smoke pipeline and then check the widget into the library. "
+            "Use this only for changes that should become reusable widget logic. "
             "Requires reason. Supports either path or widget_dir for compatibility."
         ),
         "schema": {
@@ -148,7 +168,7 @@ TOOL_SPECS = [
     {
         "name": "cartograph_config",
         "description": (
-            "Read or update Cartograph workflow defaults. "
+            "Read or update Cartograph workflow defaults used by the daily widget loop. "
             "Provide key to read the current value; provide both key and value to update it."
         ),
         "schema": {
@@ -156,6 +176,35 @@ TOOL_SPECS = [
             "value": {"type": "string", "description": "Optional new value to set."},
         },
         "required": ["key"],
+    },
+    {
+        "name": "cartograph_rules",
+        "description": (
+            "List or manage custom validation rules that run during Cartograph validate and checkin. "
+            "Actions: list shows active rules; init creates a project or global rules file and requires language; "
+            "reset restores a rules file template, requires language, and requires confirm=true."
+        ),
+        "schema": {
+            "action": {
+                "type": "string",
+                "enum": RULE_ACTIONS,
+                "description": "Rules action to perform.",
+            },
+            "language": {
+                "type": "string",
+                "description": "Language for init/reset or optional filter for list, for example python.",
+            },
+            "scope": {
+                "type": "string",
+                "enum": RULE_SCOPES,
+                "description": "Whether to target project rules or global rules. Defaults to project.",
+            },
+            "confirm": {
+                "type": "boolean",
+                "description": "Required as true for reset because reset overwrites rule edits.",
+            },
+        },
+        "required": ["action"],
     },
 ]
 
@@ -304,6 +353,27 @@ def _build_cartograph_config(args: dict) -> list[str]:
     return cmd
 
 
+def _build_cartograph_rules(args: dict) -> list[str]:
+    action = args.get("action")
+    if action not in RULE_ACTIONS:
+        raise ValueError("cartograph_rules action must be one of: list, init, reset")
+    if action in {"init", "reset"} and "language" not in args:
+        raise ValueError(f"cartograph_rules action={action} requires language")
+    if action == "reset" and args.get("confirm") is not True:
+        raise ValueError("cartograph_rules action=reset requires confirm=true")
+
+    cmd = ["cartograph", "rules", "--json"]
+    if action != "list":
+        cmd.append(str(action))
+    if "language" in args:
+        cmd.extend(["--language", str(args["language"])])
+    if args.get("scope") == "global":
+        cmd.append("--global")
+    if args.get("confirm") is True:
+        cmd.append("--confirm")
+    return cmd
+
+
 BUILDERS = {
     "registry_widget": _build_registry_widget,
     "installed_widget": _build_installed_widget,
@@ -312,6 +382,7 @@ BUILDERS = {
     "validate_widget": _build_validate_widget,
     "checkin_widget": _build_checkin_widget,
     "cartograph_config": _build_cartograph_config,
+    "cartograph_rules": _build_cartograph_rules,
 }
 
 

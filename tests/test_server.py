@@ -19,7 +19,7 @@ async def _assert_command(tool_name, arguments, expected_cmd):
 @pytest.mark.asyncio
 async def test_list_tools():
     tools = await handle_list_tools()
-    assert len(tools) == 7
+    assert len(tools) == 8
     assert [t.name for t in tools] == [
         "registry_widget",
         "installed_widget",
@@ -28,7 +28,14 @@ async def test_list_tools():
         "validate_widget",
         "checkin_widget",
         "cartograph_config",
+        "cartograph_rules",
     ]
+
+
+def test_server_instructions_explain_cli_fallback():
+    assert bridge.server.instructions
+    assert "cartograph --help" in bridge.server.instructions
+    assert "not the full Cartograph CLI" in bridge.server.instructions
 
 
 @pytest.mark.asyncio
@@ -234,6 +241,26 @@ async def test_cartograph_config_updates_value():
                 "known warning",
             ],
         ),
+        (
+            "cartograph_rules",
+            {"action": "list"},
+            ["cartograph", "rules", "--json"],
+        ),
+        (
+            "cartograph_rules",
+            {"action": "list", "language": "python", "scope": "global"},
+            ["cartograph", "rules", "--json", "--language", "python", "--global"],
+        ),
+        (
+            "cartograph_rules",
+            {"action": "init", "language": "python"},
+            ["cartograph", "rules", "--json", "init", "--language", "python"],
+        ),
+        (
+            "cartograph_rules",
+            {"action": "reset", "language": "python", "scope": "global", "confirm": True},
+            ["cartograph", "rules", "--json", "reset", "--language", "python", "--global", "--confirm"],
+        ),
     ],
 )
 async def test_command_shapes_are_fully_expected(tool_name, arguments, expected_cmd):
@@ -251,6 +278,9 @@ async def test_command_shapes_are_fully_expected(tool_name, arguments, expected_
         ("registry_widget", {"action": "publish"}, "must be one of"),
         ("installed_widget", {"action": "upgrade"}, "requires widget_dir"),
         ("installed_widget", {"action": "delete", "widget_dir": "cg/x"}, "must be one of"),
+        ("cartograph_rules", {"action": "publish"}, "must be one of"),
+        ("cartograph_rules", {"action": "init"}, "requires language"),
+        ("cartograph_rules", {"action": "reset", "language": "python"}, "requires confirm=true"),
     ],
 )
 async def test_invalid_argument_combinations_return_clear_errors(tool_name, arguments, message_fragment):

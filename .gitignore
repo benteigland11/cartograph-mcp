@@ -1,6 +1,7 @@
 .codex
 .codex/
 .pytest_cache/
+dist/
 __pycache__/
 tests/__pycache__/
 cg/__pycache__/

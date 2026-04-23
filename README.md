@@ -44,7 +44,7 @@ Common CLI setup commands:
 
 ```bash
 # Claude Code
-claude mcp add cartograph -- cartograph-mcp
+claude mcp add cartograph --scope user -- cartograph-mcp
 
 # Codex
 codex mcp add cartograph -- cartograph-mcp
@@ -55,6 +55,8 @@ gemini mcp add cartograph cartograph-mcp
 # Cursor
 cursor --add-mcp '{"name":"cartograph","command":"cartograph-mcp"}'
 ```
+
+Claude Code expects an explicit scope flag such as `--scope user`.
 
 ## Tool surface
 
@@ -69,6 +71,7 @@ The MCP intentionally exposes a small workflow-oriented surface:
 - `validate_widget`
 - `checkin_widget`
 - `cartograph_config`
+- `cartograph_rules`
 
 These are not a 1:1 mirror of the CLI. They are grouped around agent intent:
 
@@ -77,6 +80,7 @@ These are not a 1:1 mirror of the CLI. They are grouped around agent intent:
 - project health/status
 - widget authoring
 - workflow configuration
+- custom validation rules
 
 ## Example workflow
 
@@ -95,6 +99,7 @@ In Cartograph terms:
 - `installed_widget` handles already-installed widget paths like `cg/backend_retry_python`
 - `validate_widget` is the dry run for `checkin_widget`
 - `cartograph_config` manages the defaults that change how your day-to-day loop behaves
+- `cartograph_rules` manages custom rules that run during validate and checkin
 
 ## Philosophy
 

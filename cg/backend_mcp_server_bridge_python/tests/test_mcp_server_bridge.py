@@ -5,6 +5,12 @@ import pytest
 from src.mcp_server_bridge import McpServerBridge
 
 
+def test_bridge_sets_server_instructions():
+    bridge = McpServerBridge("test-bridge", instructions="Use this bridge for tests.")
+
+    assert bridge.server.instructions == "Use this bridge for tests."
+
+
 @pytest.mark.asyncio
 async def test_list_tools_exposes_schema_and_required_fields():
     bridge = McpServerBridge("test-bridge")
