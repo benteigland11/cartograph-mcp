@@ -1,49 +1,32 @@
 # cartograph-mcp
 
-[![PyPI version](https://img.shields.io/pypi/v/cartograph-mcp.svg)](https://pypi.org/project/cartograph-mcp/)
-[![Python versions](https://img.shields.io/pypi/pyversions/cartograph-mcp.svg)](https://pypi.org/project/cartograph-mcp/)
 [![CI](https://github.com/benteigland11/cartograph-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/benteigland11/cartograph-mcp/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/cartograph-mcp.svg)](https://pypi.org/project/cartograph-mcp/)
 
-Model Context Protocol (MCP) server for [Cartograph](https://github.com/Vinscen/Cartograph) widget library.
+An MCP server for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. Search, inspect, install, create, validate, check in, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
 
-## Installation
+## Why this exists
+
+The Cartograph CLI is the source of truth, but agents do better when the common path is small and explicit.
+
+This MCP keeps the top-level tool surface focused on daily driving:
+
+- finding reusable widgets
+- inspecting and installing them
+- managing installed widget copies
+- creating new widgets
+- validating and checking them back in
+- adjusting the core Cartograph defaults that affect normal workflow
+
+Everything else stays in the CLI. That keeps the MCP easier to teach, easier to test, and less likely to drift into a second full interface.
+
+## Quick start
 
 ```bash
 pip install cartograph-mcp
 ```
 
-## Release
-
-Intended standalone repository: `benteigland11/cartograph-mcp`
-
-PyPI trusted publishing is configured around the GitHub Actions workflow file
-`.github/workflows/pypi-publish.yml` and the GitHub environment `pypi`.
-
-Current package version: `0.1.0`
-
-Release flow:
-
-1. Normal commits go to `main` and only run CI.
-2. When you are ready to release, bump the version in `pyproject.toml` and commit that change.
-3. Push the version bump commit and confirm CI passes.
-4. After CI succeeds on `main`, the `pypi-publish` workflow detects the version bump automatically.
-5. It publishes the package to PyPI via Trusted Publishing.
-6. It creates the matching tag and GitHub release automatically using `vX.Y.Z` and generated release notes.
-
-One-time setup still required:
-
-1. Create the `cartograph-mcp` project on PyPI.
-2. Add a Trusted Publisher for:
-   - owner: `benteigland11`
-   - repository: `cartograph-mcp`
-   - workflow file: `pypi-publish.yml`
-   - environment: `pypi`
-3. Create the GitHub environment named `pypi` in the repo settings.
-4. Make sure the GitHub token has permission to create releases in the repo workflow context (the workflow requests `contents: write`).
-
-## Configuration for Claude Desktop
-
-Add this to your `claude_desktop_config.json`:
+Claude Desktop example:
 
 ```json
 {
@@ -55,9 +38,27 @@ Add this to your `claude_desktop_config.json`:
 }
 ```
 
-## Tools
+The package depends on `cartograph-cli` and shells out to it as the source of truth for the full command surface.
 
-The MCP server intentionally exposes a small daily-driving surface:
+Common CLI setup commands:
+
+```bash
+# Claude Code
+claude mcp add cartograph -- cartograph-mcp
+
+# Codex
+codex mcp add cartograph -- cartograph-mcp
+
+# Gemini CLI
+gemini mcp add cartograph cartograph-mcp
+
+# Cursor
+cursor --add-mcp '{"name":"cartograph","command":"cartograph-mcp"}'
+```
+
+## Tool surface
+
+The MCP intentionally exposes a small workflow-oriented surface:
 
 - `registry_widget`
   Actions: `search`, `inspect`, `install`, `rate`
@@ -69,14 +70,89 @@ The MCP server intentionally exposes a small daily-driving surface:
 - `checkin_widget`
 - `cartograph_config`
 
-## Usage
+These are not a 1:1 mirror of the CLI. They are grouped around agent intent:
 
-Cartograph is a widget library manager, so the normal loop still applies: search first, inspect existing widgets, install and wire them in, then validate and check in improvements when you generalize logic.
+- registry-facing work
+- installed-widget mutation
+- project health/status
+- widget authoring
+- workflow configuration
 
-The MCP surface is workflow-oriented rather than a 1:1 mirror of the CLI. `registry_widget` handles library-facing actions, `installed_widget` handles mutations for already-installed widget dirs, and `widget_status` is the project health check. `create_widget` uses the Cartograph mental model directly: pass `name` as the slug only, and the CLI composes the full widget ID from `domain` and `language`.
+## Example workflow
 
-`validate_widget` is the dry run for `checkin_widget`: it runs the same preflight / smoke path without mutating library state. `checkin_widget` runs that pipeline and then performs the actual checkin.
+```text
+1. Search the registry before writing logic.
+2. Inspect the widget you want to reuse.
+3. Install it into the project.
+4. If no existing widget fits, create one.
+5. Validate it with the full dry-run pipeline.
+6. Check it in with a reason once it is ready.
+```
 
-`cartograph_config` is the one setup/defaults tool in MCP. Use it to read or update core workflow settings like `auto-publish`, `visibility`, `governance`, `cloud`, `show-unavailable`, and `publish-registry`.
+In Cartograph terms:
 
-For everything beyond this daily-driving surface, use the shell and `cartograph --help` or `cartograph <command> --help`. The CLI is the source of truth for rollback/delete, cloud ops, config/setup/auth, doctor/stats/dashboard/export/import, and other uncommon or administrative operations.
+- `registry_widget` handles discovery and install
+- `installed_widget` handles already-installed widget paths like `cg/backend_retry_python`
+- `validate_widget` is the dry run for `checkin_widget`
+- `cartograph_config` manages the defaults that change how your day-to-day loop behaves
+
+## Philosophy
+
+This MCP is deliberately not the whole CLI.
+
+The common path belongs in MCP. The official full surface belongs in `cartograph`.
+
+For uncommon, administrative, or recovery operations, use:
+
+```bash
+cartograph --help
+cartograph <command> --help
+```
+
+That includes things like rollback/delete, cloud operations, auth, setup, rules, doctor, export/import, and other non-daily commands.
+
+## Configuration
+
+`cartograph_config` exposes the workflow defaults that matter most to agents:
+
+- `auto-publish`
+- `visibility`
+- `governance`
+- `cloud`
+- `show-unavailable`
+- `publish-registry`
+
+Reading and writing config is done through the CLI's `--json` path so MCP can consume it safely.
+
+## Testing
+
+This package is tested in two layers:
+
+- command-contract tests that mock the CLI runner and assert the exact commands the MCP builds
+- isolated integration tests that run the real Cartograph CLI in a temporary environment
+
+The integration suite isolates:
+
+- `HOME`
+- `XDG_CONFIG_HOME`
+- `XDG_DATA_HOME`
+- `XDG_CACHE_HOME`
+- `WIDGET_LIBRARY_PATH`
+- project working directory
+
+That means validate/checkin/install flows are exercised without touching the real widget library or user config on the machine running tests.
+
+
+## Development
+
+```bash
+pip install -e .
+pytest -q
+```
+
+The repo includes:
+
+- `ci.yml` for normal test/build validation on pushes and pull requests
+- `pypi-publish.yml` for automated release publishing after a successful version-bump CI run
+
+For the full product story and complete CLI surface, see [Cartograph](https://github.com/benteigland11/Cartograph).
