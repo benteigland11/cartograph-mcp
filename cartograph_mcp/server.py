@@ -15,7 +15,7 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.1.1", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.1.2", instructions=SERVER_INSTRUCTIONS)
 
 DOMAINS = [
     "backend",
