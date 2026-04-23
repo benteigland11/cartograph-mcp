@@ -26,8 +26,9 @@ Release flow:
 1. Normal commits go to `main` and only run CI.
 2. When you are ready to release, bump the version in `pyproject.toml` and commit that change.
 3. Push the version bump commit and confirm CI passes.
-4. Create a version tag like `v0.1.0` and publish a GitHub release from that tag.
-5. The `pypi-publish` workflow builds the package and publishes it to PyPI via Trusted Publishing.
+4. After CI succeeds on `main`, the `pypi-publish` workflow detects the version bump automatically.
+5. It publishes the package to PyPI via Trusted Publishing.
+6. It creates the matching tag and GitHub release automatically using `vX.Y.Z` and generated release notes.
 
 One-time setup still required:
 
@@ -38,7 +39,7 @@ One-time setup still required:
    - workflow file: `pypi-publish.yml`
    - environment: `pypi`
 3. Create the GitHub environment named `pypi` in the repo settings.
-4. Use version tags in the form `vX.Y.Z` for publish releases.
+4. Make sure the GitHub token has permission to create releases in the repo workflow context (the workflow requests `contents: write`).
 
 ## Configuration for Claude Desktop
 
