@@ -1,5 +1,9 @@
 # cartograph-mcp
 
+[![PyPI version](https://img.shields.io/pypi/v/cartograph-mcp.svg)](https://pypi.org/project/cartograph-mcp/)
+[![Python versions](https://img.shields.io/pypi/pyversions/cartograph-mcp.svg)](https://pypi.org/project/cartograph-mcp/)
+[![CI](https://github.com/benteigland11/cartograph-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/benteigland11/cartograph-mcp/actions/workflows/ci.yml)
+
 Model Context Protocol (MCP) server for [Cartograph](https://github.com/Vinscen/Cartograph) widget library.
 
 ## Installation
@@ -14,6 +18,27 @@ Intended standalone repository: `benteigland11/cartograph-mcp`
 
 PyPI trusted publishing is configured around the GitHub Actions workflow file
 `.github/workflows/pypi-publish.yml` and the GitHub environment `pypi`.
+
+Current package version: `0.1.0`
+
+Release flow:
+
+1. Normal commits go to `main` and only run CI.
+2. When you are ready to release, bump the version in `pyproject.toml` and commit that change.
+3. Push the version bump commit and confirm CI passes.
+4. Create a version tag like `v0.1.0` and publish a GitHub release from that tag.
+5. The `pypi-publish` workflow builds the package and publishes it to PyPI via Trusted Publishing.
+
+One-time setup still required:
+
+1. Create the `cartograph-mcp` project on PyPI.
+2. Add a Trusted Publisher for:
+   - owner: `benteigland11`
+   - repository: `cartograph-mcp`
+   - workflow file: `pypi-publish.yml`
+   - environment: `pypi`
+3. Create the GitHub environment named `pypi` in the repo settings.
+4. Use version tags in the form `vX.Y.Z` for publish releases.
 
 ## Configuration for Claude Desktop
 
