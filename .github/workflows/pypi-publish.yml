@@ -1,11 +1,9 @@
 name: pypi-publish
 
 on:
-  workflow_run:
-    workflows:
-      - ci
-    types:
-      - completed
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -13,38 +11,38 @@ permissions:
   id-token: write
 
 jobs:
+  tests:
+    name: Tests
+    if: github.event_name != 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+
   publish:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
+    name: Build and publish
+    if: always() && (github.event_name == 'workflow_dispatch' || needs.tests.result == 'success')
+    needs: tests
     runs-on: ubuntu-latest
     environment:
       name: pypi
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
 
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.workflow_run.head_sha }}
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Determine release version
-        id: version
+      - name: Determine release tag
+        id: release
         run: |
           python - <<'PY'
-          import os
           import pathlib
           import re
-          import subprocess
+          import os
           
           pyproject = pathlib.Path("pyproject.toml").read_text()
           match = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
@@ -52,67 +50,47 @@ jobs:
               raise SystemExit("Could not find project version in pyproject.toml")
           version = match.group(1)
           tag = f"v{version}"
-          
-          prev_version = None
-          try:
-              prev_pyproject = subprocess.check_output(
-                  ["git", "show", "HEAD^:pyproject.toml"],
-                  text=True,
-              )
-              prev_match = re.search(r'^version = "([^"]+)"$', prev_pyproject, re.MULTILINE)
-              if prev_match:
-                  prev_version = prev_match.group(1)
-          except subprocess.CalledProcessError:
-              prev_version = None
-          
-          tag_exists = subprocess.run(
-              ["git", "rev-parse", "-q", "--verify", f"refs/tags/{tag}"],
-              capture_output=True,
-              text=True,
-          ).returncode == 0
-          
-          should_release = not tag_exists and (
-              "${{ github.event_name }}" == "workflow_dispatch" or prev_version != version
-          )
-          
+
           out = pathlib.Path(os.environ["GITHUB_OUTPUT"])
           with out.open("a") as fh:
               fh.write(f"version={version}\n")
               fh.write(f"tag={tag}\n")
-              fh.write(f"should_release={'true' if should_release else 'false'}\n")
           PY
 
-      - name: Skip when version was not bumped
-        if: steps.version.outputs.should_release != 'true'
-        run: |
-          echo "No new version bump detected; skipping publish."
-
       - name: Build distributions
-        if: steps.version.outputs.should_release == 'true'
         run: |
           python -m pip install --upgrade pip
           python -m pip install build
           python -m build
 
       - name: Publish to PyPI
-        if: steps.version.outputs.should_release == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Create GitHub release
-        if: steps.version.outputs.should_release == 'true' && github.event_name != 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --target "${{ github.event.workflow_run.head_sha }}" \
-            --title "${{ steps.version.outputs.tag }}" \
-            --generate-notes
+  fresh-install:
+    name: Fresh install
+    needs: publish
+    uses: ./.github/workflows/fresh-install.yml
+    with:
+      version: ${{ needs.publish.outputs.version }}
 
-      - name: Create GitHub release for manual dispatch
-        if: steps.version.outputs.should_release == 'true' && github.event_name == 'workflow_dispatch'
+  release:
+    name: Create GitHub release
+    needs: [publish, fresh-install]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.publish.outputs.tag }}
         run: |
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --title "${{ steps.version.outputs.tag }}" \
+          gh release create "${TAG}" \
+            --title "${TAG}" \
             --generate-notes

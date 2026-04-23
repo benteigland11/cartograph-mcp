@@ -1,0 +1,50 @@
+name: Fresh Install Test
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+jobs:
+  fresh-install:
+    name: Fresh install from PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install from PyPI (with retry)
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          echo "Waiting for cartograph-mcp==$VERSION on PyPI..."
+          for i in $(seq 1 30); do
+            if pip install "cartograph-mcp==$VERSION" 2>&1; then
+              echo "Installed cartograph-mcp==$VERSION"
+              exit 0
+            fi
+            echo "Attempt $i/30 - not yet available, waiting 10s..."
+            sleep 10
+          done
+          echo "Failed to install cartograph-mcp==$VERSION after 30 attempts"
+          exit 1
+
+      - name: Verify package import
+        run: python -c "import cartograph_mcp.server"
+
+      - name: Verify Cartograph CLI dependency
+        run: cartograph --help
+
+      - name: Verify MCP entrypoint starts
+        run: |
+          timeout 3 cartograph-mcp
+          rc=$?
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ]; then
+            echo "cartograph-mcp exited unexpectedly with code $rc"
+            exit "$rc"
+          fi
