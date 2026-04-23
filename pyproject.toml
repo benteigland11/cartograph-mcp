@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cartograph-mcp"
+version = "0.1.0"
+description = "Declarative MCP server for the Cartograph widget library"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Cartograph Maintainers" },
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "cartograph-cli>=0.6.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/benteigland11/cartograph-mcp"
+Repository = "https://github.com/benteigland11/cartograph-mcp"
+
+[project.scripts]
+cartograph-mcp = "server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["cg"]
+include = ["server.py"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"

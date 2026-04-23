@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "id": "backend-json-rpc-subprocess-python",
+    "name": "JSON RPC Subprocess",
+    "version": "0.1.0",
+    "domain": "backend",
+    "tags": [
+      "cli",
+      "json",
+      "subprocess",
+      "wrapper",
+      "rpc"
+    ]
+  },
+  "description": "Execute CLI tools that return JSON output and parse them into Python dictionaries. Handles non-zero exit codes and malformed JSON with structured error responses.",
+  "tech_stack": {
+    "language": "python",
+    "dependencies": []
+  },
+  "usage": {
+    "setup": "Install as a Cartograph widget.",
+    "instantiation": "from src.json_rpc_subprocess import run_json_cli",
+    "api_reference": "run_json_cli(cmd: List[str], env: Optional[Dict[str, str]] = None) -> Dict[str, Any]"
+  },
+  "library_notes": {
+    "baseline": "0.1.0"
+  }
+}

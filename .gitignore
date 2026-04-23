@@ -1,0 +1,6 @@
+.codex/
+.pytest_cache/
+__pycache__/
+tests/__pycache__/
+cg/__pycache__/
+*.pyc
