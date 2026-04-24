@@ -59,8 +59,8 @@ def isolated_env(tmp_path, monkeypatch):
 
 async def _call_and_parse(tool_name: str, arguments: dict):
     result = await handle_call_tool(tool_name, arguments)
-    assert len(result) == 1
-    return json.loads(result[0].text)
+    assert isinstance(result, dict)
+    return result
 
 
 def _find_created_widget_dir(project_dir: Path) -> Path:

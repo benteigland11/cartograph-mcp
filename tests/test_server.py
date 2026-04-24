@@ -7,6 +7,8 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from mcp import types
+
 from server import bridge, handle_call_tool, handle_list_tools
 
 
@@ -89,9 +91,8 @@ async def test_checkin_widget_accepts_widget_dir_alias():
 @pytest.mark.asyncio
 async def test_installed_widget_rejects_missing_widget_dir():
     result = await handle_call_tool("installed_widget", {"action": "upgrade"})
-    data = json.loads(result[0].text)
-    assert data["status"] == "error"
-    assert "widget_dir" in data["message"]
+    assert result["status"] == "error"
+    assert "widget_dir" in result["message"]
 
 
 @pytest.mark.asyncio
@@ -122,6 +123,24 @@ async def test_cartograph_config_updates_value():
         {"key": "visibility", "value": "private"},
         ["cartograph", "config", "--json", "visibility", "private"],
     )
+
+
+@pytest.mark.asyncio
+async def test_registered_mcp_handler_uses_custom_dispatcher():
+    request = types.CallToolRequest(
+        method="tools/call",
+        params=types.CallToolRequestParams(
+            name="cartograph_config",
+            arguments={"key": "auto-publish"},
+        ),
+    )
+
+    with patch.object(bridge, "_run_json_cli", return_value={"status": "success", "key": "auto-publish"}) as mock_run:
+        result = await bridge.server.request_handlers[types.CallToolRequest](request)
+
+    assert mock_run.call_args.args[0] == ["cartograph", "config", "--json", "auto-publish"]
+    assert result.root.structuredContent == {"status": "success", "key": "auto-publish"}
+    assert json.loads(result.root.content[0].text) == {"status": "success", "key": "auto-publish"}
 
 
 @pytest.mark.asyncio
@@ -285,6 +304,5 @@ async def test_command_shapes_are_fully_expected(tool_name, arguments, expected_
 )
 async def test_invalid_argument_combinations_return_clear_errors(tool_name, arguments, message_fragment):
     result = await handle_call_tool(tool_name, arguments)
-    data = json.loads(result[0].text)
-    assert data["status"] == "error"
-    assert message_fragment in data["message"]
+    assert result["status"] == "error"
+    assert message_fragment in result["message"]

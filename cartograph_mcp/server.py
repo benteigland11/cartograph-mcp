@@ -1,8 +1,6 @@
 import asyncio
 import json
 
-from mcp.types import TextContent
-
 from cartograph_mcp.bridge import McpServerBridge
 
 
@@ -15,7 +13,7 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.1.3", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.1.4", instructions=SERVER_INSTRUCTIONS)
 
 DOMAINS = [
     "backend",
@@ -221,12 +219,11 @@ def _register_tools() -> None:
 
 
 def _error(message: str):
-    return [TextContent(type="text", text=json.dumps({"status": "error", "message": message}, indent=2))]
+    return {"status": "error", "message": message}
 
 
 def _run(cmd: list[str]):
-    result = bridge._run_json_cli(cmd)
-    return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    return bridge._run_json_cli(cmd)
 
 
 def _build_registry_widget(args: dict) -> list[str]:
@@ -402,6 +399,9 @@ async def handle_call_tool(name, arguments):
     except ValueError as exc:
         return _error(str(exc))
     return _run(cmd)
+
+
+bridge.server.call_tool()(handle_call_tool)
 
 
 async def _run_server():
