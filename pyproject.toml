@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cartograph-mcp"
-version = "0.1.4"
+version = "0.1.5"
 description = "Declarative MCP server for the Cartograph widget library"
 readme = "README.md"
 license = "MIT"
@@ -14,7 +14,7 @@ authors = [
 ]
 dependencies = [
     "mcp>=1.0.0",
-    "cartograph-cli>=0.6.7",
+    "cartograph-cli>=0.6.13",
 ]
 
 [project.urls]
