@@ -5,7 +5,8 @@
 
 mcp-name: io.github.benteigland11/cartograph
 
-Sick and tired of vibe coding the same solutions **over and over** again? So are we! Time to stop spending money on **redundant tokens** and start spending it on **innovate solutions**.
+Tired of vibe coding the same solutions **over and over**?
+Time to stop spending money on **redundant tokens** and start spending it on **innovative solutions**.
 
 This MCP server is for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. On installation of the MCP the CLI will be installed automatically. Once you have it, Search, inspect, install, create, validate, check in, custom rules, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
 
