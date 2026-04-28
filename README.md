@@ -5,9 +5,17 @@
 
 mcp-name: io.github.benteigland11/cartograph
 
-An MCP server for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. Search, inspect, install, create, validate, check in, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
+Sick and tired of vibe coding the same solutions **over and over** again? So are we! Time to stop spending money on **redundant tokens** and start spending it on **innovate solutions**.
+
+This MCP server is for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. On installation of the MCP the CLI will be installed automatically. Once you have it, Search, inspect, install, create, validate, check in, custom rules, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
+
+It is highly recommended to use the [plugins](https://github.com/benteigland11/cartograph-plugins) for the skills that go with this MCP. It will give your agent what it needs to explain a lot of the configuration and give you a very powerful workflow tool.
 
 ## Why this exists
+
+I personally have spent hours and hours working on solutions I'm proud of, only to hit a wall trying to get the same one done. The reality was prompting was never good enough, I needed a way to know my llama.cpp server client integration was going to be the same everytime I used it. I also needed to know that when I found an improvement, that improvement would stick.
+
+If you are sick and tired of wasting money and time on redoing things you've done before, like a **mouse on a wheel** then get your agents to start using Cartograph.
 
 The Cartograph CLI is the source of truth, but agents do better when the common path is small and explicit.
 
