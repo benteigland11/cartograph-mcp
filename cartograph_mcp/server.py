@@ -335,8 +335,12 @@ def _build_checkin_widget(args: dict) -> list[str]:
     cmd.extend(["--reason", str(args["reason"])])
     if "bump" in args:
         cmd.extend(["--bump", str(args["bump"])])
+    # Forward both branches explicitly. Without --no-publish, auto_publish=True
+    # would override an agent's deliberate publish=false.
     if args.get("publish") is True:
         cmd.append("--publish")
+    elif args.get("publish") is False:
+        cmd.append("--no-publish")
     if args.get("override_warnings") is True:
         cmd.append("--override-warnings")
     if "override_reason" in args:

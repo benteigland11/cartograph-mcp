@@ -261,6 +261,22 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
             ],
         ),
         (
+            "checkin_widget",
+            {
+                "path": "cg/backend_retry_python",
+                "reason": "skip cloud",
+                "publish": False,
+            },
+            [
+                "cartograph",
+                "checkin",
+                "cg/backend_retry_python",
+                "--reason",
+                "skip cloud",
+                "--no-publish",
+            ],
+        ),
+        (
             "cartograph_rules",
             {"action": "list"},
             ["cartograph", "rules", "--json"],
