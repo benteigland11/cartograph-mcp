@@ -57,8 +57,7 @@ TOOL_SPECS = [
             "Registry-facing daily workflow for Cartograph widgets. "
             "Use search before writing reusable logic, inspect before installing or editing, "
             "install to add a widget to the current project, and rate to leave registry feedback. "
-            "Actions: search requires query; inspect requires widget_id; install requires widget_id; "
-            "rate requires widget_ref and score."
+            "When installing or inspecting, use the exact value from the 'id' field returned by search."
         ),
         "schema": {
             "action": {
@@ -70,7 +69,7 @@ TOOL_SPECS = [
             "domain": {"type": "string", "enum": DOMAINS, "description": "Optional search domain filter."},
             "language": {"type": "string", "enum": LANGUAGES, "description": "Optional search language filter."},
             "top_k": {"type": "integer", "description": "Maximum search results to return."},
-            "widget_id": {"type": "string", "description": "Widget ID for inspect or install."},
+            "widget_id": {"type": "string", "description": "Widget ID. Use the exact value from the 'id' field returned by search."},
             "source": {"type": "boolean", "description": "Include source files for inspect."},
             "all_versions": {"type": "boolean", "description": "Include all historical versions for inspect."},
             "reviews": {"type": "boolean", "description": "Include reviews for inspect."},
