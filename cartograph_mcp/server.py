@@ -90,7 +90,7 @@ TOOL_SPECS = [
             "Mutate widgets already installed in the current project. "
             "Use this for installed copies only; use registry_widget install for adding a new widget. "
             "Actions: upgrade requires widget_dir and optionally version; uninstall requires widget_dir. "
-            "Pass the widget_id (e.g. cg-infra-agent-cli-python); the CLI resolves the install path."
+            "Pass the widget directory path (e.g. cg/backend-retry-python)."
         ),
         "schema": {
             "action": {
@@ -100,7 +100,7 @@ TOOL_SPECS = [
             },
             "widget_dir": {
                 "type": "string",
-                "description": "Installed widget_id like cg-infra-agent-cli-python (path also accepted).",
+                "description": "The local widget directory path (e.g. cg/backend-retry-python).",
             },
             "version": {"type": "string", "description": "Target version for upgrade."},
         },
@@ -109,11 +109,12 @@ TOOL_SPECS = [
     {
         "name": "widget_status",
         "description": (
-            "Check health/status for installed widgets in the current project. "
-            "Omit widget_dir to scan all installed widgets; provide widget_id (e.g. cg-infra-agent-cli-python) to inspect one."
+            "Check health/status for installed widgets in the current project. Use this to see if "
+            "widgets are out of sync with the library, have local modifications, or have updates available. "
+            "Omit widget_dir to scan all installed widgets; provide a specific directory (e.g. cg/backend-retry-python) to inspect one."
         ),
         "schema": {
-            "widget_dir": {"type": "string", "description": "Installed widget_id (e.g. cg-infra-agent-cli-python) or path; omit to scan all."},
+            "widget_dir": {"type": "string", "description": "Installed widget directory (e.g. cg-infra-agent-cli-python) or path; omit to scan all."},
             "page": {"type": "integer", "description": "1-indexed page for aggregate listing."},
             "size": {"type": "integer", "description": "Page size for aggregate listing."},
             "all": {"type": "boolean", "description": "Return every widget without pagination."},
@@ -141,7 +142,7 @@ TOOL_SPECS = [
             "Use this as the dry run for checkin before recording reusable widget changes."
         ),
         "schema": {
-            "path": {"type": "string", "description": "Widget directory or widget ID with lib=true."},
+            "path": {"type": "string", "description": "Widget directory (e.g. cg/backend-retry-python) or widget ID with lib=true."},
             "lib": {"type": "boolean", "description": "Treat path as a library widget ID."},
         },
     },
@@ -154,7 +155,7 @@ TOOL_SPECS = [
         ),
         "schema": {
             "path": {"type": "string", "description": "Widget directory (default: .)."},
-            "widget_dir": {"type": "string", "description": "Alias for path."},
+            "widget_dir": {"type": "string", "description": "Alias for path (e.g. cg/backend-retry-python)."},
             "reason": {"type": "string", "description": "What changed and why."},
             "bump": {"type": "string", "enum": BUMP_TYPES, "description": "Version bump type."},
             "publish": {"type": "boolean", "description": "Publish to cloud after checkin."},
