@@ -168,13 +168,13 @@ TOOL_SPECS = [
         "name": "cartograph_config",
         "description": (
             "Read or update Cartograph workflow defaults used by the daily widget loop. "
-            "Provide key to read the current value; provide both key and value to update it."
+            "Provide key to read the current value; provide both key and value to update it. "
+            "Omit all arguments to list all current configuration settings."
         ),
         "schema": {
-            "key": {"type": "string", "enum": CONFIG_KEYS, "description": "Configuration key to read or update."},
+            "key": {"type": "string", "enum": CONFIG_KEYS, "description": "Configuration key to read or update. Omit to list all settings."},
             "value": {"type": "string", "description": "Optional new value to set."},
         },
-        "required": ["key"],
     },
     {
         "name": "cartograph_rules",
@@ -349,9 +349,11 @@ def _build_checkin_widget(args: dict) -> list[str]:
 
 
 def _build_cartograph_config(args: dict) -> list[str]:
-    cmd = ["cartograph", "config", "--json", str(args["key"])]
-    if "value" in args:
-        cmd.append(str(args["value"]))
+    cmd = ["cartograph", "config", "--json"]
+    if "key" in args:
+        cmd.append(str(args["key"]))
+        if "value" in args:
+            cmd.append(str(args["value"]))
     return cmd
 
 

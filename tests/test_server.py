@@ -277,6 +277,11 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
             ],
         ),
         (
+            "cartograph_config",
+            {},
+            ["cartograph", "config", "--json"],
+        ),
+        (
             "cartograph_rules",
             {"action": "list"},
             ["cartograph", "rules", "--json"],
