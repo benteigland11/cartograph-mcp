@@ -14,7 +14,7 @@ authors = [
 ]
 dependencies = [
     "mcp>=1.0.0",
-    "cartograph-cli>=0.6.13",
+    "cartograph-cli>=0.7.1",
 ]
 
 [project.urls]
