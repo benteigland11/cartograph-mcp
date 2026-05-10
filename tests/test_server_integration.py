@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from server import handle_call_tool
+from cartograph_mcp.server import handle_call_tool
 
 
 def _ensure_cartograph_available() -> None:
@@ -103,7 +103,7 @@ async def test_end_to_end_daily_workflow(isolated_env):
     project_dir = isolated_env["project_dir"]
 
     create_data = await _call_and_parse(
-        "create_widget",
+        "cg_create",
         {
             "name": "mcp-smoke",
             "domain": "backend",
@@ -117,38 +117,38 @@ async def test_end_to_end_daily_workflow(isolated_env):
     _make_scaffold_valid(created_widget_dir)
 
     validate_data = await _call_and_parse(
-        "validate_widget",
+        "cg_validate",
         {"path": str(created_widget_dir)},
     )
     assert validate_data["status"] == "success"
 
     checkin_data = await _call_and_parse(
-        "checkin_widget",
+        "cg_checkin",
         {"path": str(created_widget_dir), "reason": "initial mcp integration smoke"},
     )
     assert checkin_data["status"] == "success"
 
     search_data = await _call_and_parse(
-        "registry_widget",
+        "cg_registry",
         {"action": "search", "query": "mcp-smoke"},
     )
     assert "widgets" in search_data
     assert any(widget["id"] == "backend-mcp-smoke-python" for widget in search_data["widgets"])
 
     inspect_data = await _call_and_parse(
-        "registry_widget",
+        "cg_registry",
         {"action": "inspect", "widget_id": "backend-mcp-smoke-python"},
     )
     assert inspect_data["id"] == "backend-mcp-smoke-python"
 
     shutil.rmtree(created_widget_dir)
 
-    status_before_install = await _call_and_parse("widget_status", {})
+    status_before_install = await _call_and_parse("cg_status", {})
     assert "widgets" in status_before_install
     assert status_before_install["widgets"] == []
 
     install_data = await _call_and_parse(
-        "registry_widget",
+        "cg_registry",
         {"action": "install", "widget_id": "backend-mcp-smoke-python"},
     )
     assert install_data["status"] == "success"
@@ -157,19 +157,19 @@ async def test_end_to_end_daily_workflow(isolated_env):
     assert installed_widget_dir.is_dir()
 
     widget_status_data = await _call_and_parse(
-        "widget_status",
+        "cg_status",
         {"widget_dir": str(installed_widget_dir)},
     )
     assert widget_status_data["widget_id"] == "backend-mcp-smoke-python"
 
     upgrade_data = await _call_and_parse(
-        "installed_widget",
+        "cg_installed",
         {"action": "upgrade", "widget_dir": str(installed_widget_dir)},
     )
     assert upgrade_data["status"] == "success"
 
     uninstall_data = await _call_and_parse(
-        "installed_widget",
+        "cg_installed",
         {"action": "uninstall", "widget_dir": str(installed_widget_dir)},
     )
     assert uninstall_data["status"] == "success"
@@ -178,16 +178,16 @@ async def test_end_to_end_daily_workflow(isolated_env):
 
 @pytest.mark.asyncio
 async def test_cartograph_config_round_trip(isolated_env):
-    read_default = await _call_and_parse("cartograph_config", {"key": "auto-publish"})
+    read_default = await _call_and_parse("cg_config", {"key": "auto-publish"})
     assert read_default["status"] == "success"
     assert read_default["key"] == "auto-publish"
 
     write_value = await _call_and_parse(
-        "cartograph_config",
+        "cg_config",
         {"key": "auto-publish", "value": "False"},
     )
     assert write_value["status"] == "success"
 
-    read_updated = await _call_and_parse("cartograph_config", {"key": "auto-publish"})
+    read_updated = await _call_and_parse("cg_config", {"key": "auto-publish"})
     assert read_updated["status"] == "success"
     assert read_updated["value"] is False

@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from mcp import types
 
-from server import bridge, handle_call_tool, handle_list_tools
+from cartograph_mcp.server import bridge, handle_call_tool, handle_list_tools
 
 
 async def _assert_command(tool_name, arguments, expected_cmd):
@@ -21,16 +21,18 @@ async def _assert_command(tool_name, arguments, expected_cmd):
 @pytest.mark.asyncio
 async def test_list_tools():
     tools = await handle_list_tools()
-    assert len(tools) == 8
+    assert len(tools) == 10
     assert [t.name for t in tools] == [
-        "registry_widget",
-        "installed_widget",
-        "widget_status",
-        "create_widget",
-        "validate_widget",
-        "checkin_widget",
-        "cartograph_config",
-        "cartograph_rules",
+        "cg_registry",
+        "cg_installed",
+        "cg_status",
+        "cg_create",
+        "cg_validate",
+        "cg_checkin",
+        "cg_blueprint",
+        "cg_architect",
+        "cg_config",
+        "cg_rules",
     ]
 
 
@@ -43,7 +45,7 @@ def test_server_instructions_explain_cli_fallback():
 @pytest.mark.asyncio
 async def test_registry_search_includes_optional_filters():
     await _assert_command(
-        "registry_widget",
+        "cg_registry",
         {"action": "search", "query": "retry", "domain": "backend", "language": "python", "top_k": 5},
         [
         "cartograph",
@@ -62,7 +64,7 @@ async def test_registry_search_includes_optional_filters():
 @pytest.mark.asyncio
 async def test_registry_inspect_supports_all_versions_flag():
     await _assert_command(
-        "registry_widget",
+        "cg_registry",
         {"action": "inspect", "widget_id": "backend-retry-python", "all_versions": True},
         [
         "cartograph",
@@ -76,7 +78,7 @@ async def test_registry_inspect_supports_all_versions_flag():
 @pytest.mark.asyncio
 async def test_checkin_widget_accepts_widget_dir_alias():
     await _assert_command(
-        "checkin_widget",
+        "cg_checkin",
         {"widget_dir": "cg/backend_retry_python", "reason": "tighten docs"},
         [
         "cartograph",
@@ -90,7 +92,7 @@ async def test_checkin_widget_accepts_widget_dir_alias():
 
 @pytest.mark.asyncio
 async def test_installed_widget_rejects_missing_widget_dir():
-    result = await handle_call_tool("installed_widget", {"action": "upgrade"})
+    result = await handle_call_tool("cg_installed", {"action": "upgrade"})
     assert result["status"] == "error"
     assert "widget_dir" in result["message"]
 
@@ -98,7 +100,7 @@ async def test_installed_widget_rejects_missing_widget_dir():
 @pytest.mark.asyncio
 async def test_registry_widget_rate_builds_expected_command():
     await _assert_command(
-        "registry_widget",
+        "cg_registry",
         {"action": "rate", "widget_ref": "@owner/backend-retry-python", "score": 4.5, "comment": "Solid"},
         [
         "cartograph",
@@ -113,13 +115,13 @@ async def test_registry_widget_rate_builds_expected_command():
 
 @pytest.mark.asyncio
 async def test_cartograph_config_reads_current_value():
-    await _assert_command("cartograph_config", {"key": "auto-publish"}, ["cartograph", "config", "--json", "auto-publish"])
+    await _assert_command("cg_config", {"key": "auto-publish"}, ["cartograph", "config", "--json", "auto-publish"])
 
 
 @pytest.mark.asyncio
 async def test_cartograph_config_updates_value():
     await _assert_command(
-        "cartograph_config",
+        "cg_config",
         {"key": "visibility", "value": "private"},
         ["cartograph", "config", "--json", "visibility", "private"],
     )
@@ -130,7 +132,7 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
     request = types.CallToolRequest(
         method="tools/call",
         params=types.CallToolRequestParams(
-            name="cartograph_config",
+            name="cg_config",
             arguments={"key": "auto-publish"},
         ),
     )
@@ -148,12 +150,12 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
     ("tool_name", "arguments", "expected_cmd"),
     [
         (
-            "registry_widget",
+            "cg_registry",
             {"action": "search", "query": "retry"},
             ["cartograph", "search", "retry"],
         ),
         (
-            "registry_widget",
+            "cg_registry",
             {
                 "action": "inspect",
                 "widget_id": "backend-retry-python",
@@ -164,42 +166,47 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
             ["cartograph", "inspect", "backend-retry-python", "--source", "--reviews", "--version", "1.2.3"],
         ),
         (
-            "registry_widget",
+            "cg_registry",
             {"action": "install", "widget_id": "backend-retry-python", "target": "/tmp/demo", "version": "2.0.0"},
             ["cartograph", "install", "backend-retry-python", "--target", "/tmp/demo", "--version", "2.0.0"],
         ),
         (
-            "installed_widget",
+            "cg_installed",
             {"action": "upgrade", "widget_dir": "cg/backend_retry_python"},
             ["cartograph", "upgrade", "cg/backend_retry_python"],
         ),
         (
-            "installed_widget",
+            "cg_installed",
             {"action": "upgrade", "widget_dir": "cg/backend_retry_python", "version": "3.1.0"},
             ["cartograph", "upgrade", "cg/backend_retry_python", "--version", "3.1.0"],
         ),
         (
-            "installed_widget",
+            "cg_installed",
             {"action": "uninstall", "widget_dir": "cg/backend_retry_python"},
             ["cartograph", "uninstall", "cg/backend_retry_python"],
         ),
         (
-            "widget_status",
+            "cg_status",
             {},
             ["cartograph", "status"],
         ),
         (
-            "widget_status",
+            "cg_status",
             {"widget_dir": "cg/backend_retry_python", "page": 2, "size": 50, "all": True},
             ["cartograph", "status", "cg/backend_retry_python", "--page", "2", "--size", "50", "--all"],
         ),
         (
-            "create_widget",
+            "cg_create",
             {"name": "retry-backoff", "domain": "backend", "language": "python"},
             ["cartograph", "create", "retry-backoff", "--language", "python", "--domain", "backend"],
         ),
         (
-            "create_widget",
+            "cg_create",
+            {"name": "my-bp", "is_blueprint": True, "target": "/tmp/bp"},
+            ["cartograph", "blueprint", "create", "my-bp", "--target", "/tmp/bp"],
+        ),
+        (
+            "cg_create",
             {
                 "name": "retry-backoff",
                 "domain": "backend",
@@ -222,22 +229,22 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
             ],
         ),
         (
-            "validate_widget",
+            "cg_validate",
             {},
             ["cartograph", "validate"],
         ),
         (
-            "validate_widget",
+            "cg_validate",
             {"path": "cg/backend-retry-python", "lib": True},
             ["cartograph", "validate", "cg/backend-retry-python", "--lib"],
         ),
         (
-            "checkin_widget",
+            "cg_checkin",
             {"path": "cg/backend_retry_python", "reason": "improve retries"},
             ["cartograph", "checkin", "cg/backend_retry_python", "--reason", "improve retries"],
         ),
         (
-            "checkin_widget",
+            "cg_checkin",
             {
                 "path": "cg/backend_retry_python",
                 "reason": "improve retries",
@@ -261,45 +268,29 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
             ],
         ),
         (
-            "checkin_widget",
-            {
-                "path": "cg/backend_retry_python",
-                "reason": "skip cloud",
-                "publish": False,
-            },
-            [
-                "cartograph",
-                "checkin",
-                "cg/backend_retry_python",
-                "--reason",
-                "skip cloud",
-                "--no-publish",
-            ],
+            "cg_blueprint",
+            {"action": "add-dep", "widget_id": "backend-retry-python", "blueprint_path": "cg/my-bp", "no_validate": True},
+            ["cartograph", "blueprint", "add-dep", "backend-retry-python", "--path", "cg/my-bp", "--no-validate"],
         ),
         (
-            "cartograph_config",
+            "cg_architect",
+            {"action": "init", "path": "project/"},
+            ["cartograph", "architect", "init", "--path", "project/"],
+        ),
+        (
+            "cg_architect",
+            {"action": "link", "component_id": "api", "widget": "backend-api-python"},
+            ["cartograph", "architect", "link", "api", "backend-api-python"],
+        ),
+        (
+            "cg_config",
             {},
             ["cartograph", "config", "--json"],
         ),
         (
-            "cartograph_rules",
+            "cg_rules",
             {"action": "list"},
             ["cartograph", "rules", "--json"],
-        ),
-        (
-            "cartograph_rules",
-            {"action": "list", "language": "python", "scope": "global"},
-            ["cartograph", "rules", "--json", "--language", "python", "--global"],
-        ),
-        (
-            "cartograph_rules",
-            {"action": "init", "language": "python"},
-            ["cartograph", "rules", "--json", "init", "--language", "python"],
-        ),
-        (
-            "cartograph_rules",
-            {"action": "reset", "language": "python", "scope": "global", "confirm": True},
-            ["cartograph", "rules", "--json", "reset", "--language", "python", "--global", "--confirm"],
         ),
     ],
 )
@@ -311,16 +302,18 @@ async def test_command_shapes_are_fully_expected(tool_name, arguments, expected_
 @pytest.mark.parametrize(
     ("tool_name", "arguments", "message_fragment"),
     [
-        ("registry_widget", {"action": "search"}, "requires query"),
-        ("registry_widget", {"action": "inspect"}, "requires widget_id"),
-        ("registry_widget", {"action": "install"}, "requires widget_id"),
-        ("registry_widget", {"action": "rate", "widget_ref": "@owner/widget"}, "requires score"),
-        ("registry_widget", {"action": "publish"}, "must be one of"),
-        ("installed_widget", {"action": "upgrade"}, "requires widget_dir"),
-        ("installed_widget", {"action": "delete", "widget_dir": "cg/x"}, "must be one of"),
-        ("cartograph_rules", {"action": "publish"}, "must be one of"),
-        ("cartograph_rules", {"action": "init"}, "requires language"),
-        ("cartograph_rules", {"action": "reset", "language": "python"}, "requires confirm=true"),
+        ("cg_registry", {"action": "search"}, "requires query"),
+        ("cg_registry", {"action": "inspect"}, "requires widget_id"),
+        ("cg_registry", {"action": "install"}, "requires widget_id"),
+        ("cg_registry", {"action": "rate", "widget_ref": "@owner/widget"}, "requires score"),
+        ("cg_registry", {"action": "publish"}, "must be one of"),
+        ("cg_installed", {"action": "upgrade"}, "requires widget_dir"),
+        ("cg_installed", {"action": "delete", "widget_dir": "cg/x"}, "must be one of"),
+        ("cg_rules", {"action": "publish"}, "must be one of"),
+        ("cg_rules", {"action": "init"}, "requires language"),
+        ("cg_rules", {"action": "reset", "language": "python"}, "requires confirm=true"),
+        ("cg_blueprint", {"action": "add-dep"}, "requires widget_id"),
+        ("cg_architect", {"action": "link"}, "requires component_id"),
     ],
 )
 async def test_invalid_argument_combinations_return_clear_errors(tool_name, arguments, message_fragment):

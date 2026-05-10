@@ -4,7 +4,7 @@ import json
 from cartograph_mcp.bridge import McpServerBridge
 
 
-SERVER_INSTRUCTIONS = """Cartograph preserves reusable implementation work across projects as widgets. Reusable means code, logic, tests, examples, models, geometry, hardware modules, or patterns that would be useful in another project, not just another file in the current project.
+SERVER_INSTRUCTIONS = """Cartograph preserves reusable implementation work across projects as widgets and blueprints. Reusable means code, logic, tests, examples, models, geometry, hardware modules, or patterns that would be useful in another project, not just another file in the current project.
 
 Use this MCP for the Cartograph daily-driver surface: registry interaction, installed-widget management, project widget status, widget creation, widget validation, widget checkin, widget rating, custom validation rules, and core workflow config.
 
@@ -13,7 +13,7 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.1.4", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.1.6", instructions=SERVER_INSTRUCTIONS)
 
 DOMAINS = [
     "backend",
@@ -25,6 +25,7 @@ DOMAINS = [
     "rtl",
     "security",
     "universal",
+    "devops",
 ]
 
 LANGUAGES = [
@@ -49,12 +50,14 @@ CONFIG_KEYS = [
 ]
 RULE_ACTIONS = ["list", "init", "reset"]
 RULE_SCOPES = ["project", "global"]
+BLUEPRINT_ACTIONS = ["create", "add-dep", "remove-dep"]
+ARCHITECT_ACTIONS = ["init", "validate", "render", "link"]
 
 TOOL_SPECS = [
     {
-        "name": "registry_widget",
+        "name": "cg_registry",
         "description": (
-            "Registry-facing daily workflow for Cartograph widgets. "
+            "Registry-facing daily workflow for Cartograph widgets and blueprints. "
             "Use search before writing reusable logic, inspect before installing or editing, "
             "install to add a widget to the current project, and rate to leave registry feedback. "
             "When installing or inspecting, use the exact value from the 'id' field returned by search."
@@ -85,10 +88,10 @@ TOOL_SPECS = [
         "required": ["action"],
     },
     {
-        "name": "installed_widget",
+        "name": "cg_installed",
         "description": (
             "Mutate widgets already installed in the current project. "
-            "Use this for installed copies only; use registry_widget install for adding a new widget. "
+            "Use this for installed copies only; use cg_registry install for adding a new widget. "
             "Actions: upgrade requires widget_dir and optionally version; uninstall requires widget_dir. "
             "Pass the widget directory path (e.g. cg/backend-retry-python)."
         ),
@@ -107,7 +110,7 @@ TOOL_SPECS = [
         "required": ["action"],
     },
     {
-        "name": "widget_status",
+        "name": "cg_status",
         "description": (
             "Check health/status for installed widgets in the current project. Use this to see if "
             "widgets are out of sync with the library, have local modifications, or have updates available. "
@@ -121,41 +124,42 @@ TOOL_SPECS = [
         },
     },
     {
-        "name": "create_widget",
+        "name": "cg_create",
         "description": (
-            "Scaffold a new Cartograph widget. Use name for the slug only, not the full widget_id; "
-            "Cartograph combines domain + name + language."
+            "Scaffold a new Cartograph widget or blueprint. Use name for the slug only, not the full widget_id; "
+            "Cartograph combines domain + name + language for widgets. For blueprints, just use the name."
         ),
         "schema": {
-            "name": {"type": "string", "description": "Widget slug, for example retry-backoff."},
-            "domain": {"type": "string", "enum": DOMAINS, "description": "Widget domain."},
-            "language": {"type": "string", "enum": LANGUAGES, "description": "Implementation language."},
-            "display_name": {"type": "string", "description": "Optional display name for widget.json."},
-            "target": {"type": "string", "description": "Project root to create the widget under."},
+            "name": {"type": "string", "description": "Slug, for example retry-backoff."},
+            "domain": {"type": "string", "enum": DOMAINS, "description": "Domain (required for widgets)."},
+            "language": {"type": "string", "enum": LANGUAGES, "description": "Language (required for widgets)."},
+            "is_blueprint": {"type": "boolean", "description": "Whether to scaffold a blueprint instead of a widget."},
+            "display_name": {"type": "string", "description": "Optional display name for manifest."},
+            "target": {"type": "string", "description": "Project root to create the module under."},
         },
-        "required": ["name", "domain", "language"],
+        "required": ["name"],
     },
     {
-        "name": "validate_widget",
+        "name": "cg_validate",
         "description": (
-            "Run the full preflight / smoke pipeline without checking the widget into the library. "
-            "Use this as the dry run for checkin before recording reusable widget changes."
+            "Run the full preflight / smoke pipeline without checking the module into the library. "
+            "Use this as the dry run for checkin before recording reusable changes."
         ),
         "schema": {
-            "path": {"type": "string", "description": "Widget directory (e.g. cg/backend-retry-python) or widget ID with lib=true."},
+            "path": {"type": "string", "description": "Module directory (e.g. cg/backend-retry-python) or ID with lib=true."},
             "lib": {"type": "boolean", "description": "Treat path as a library widget ID."},
         },
     },
     {
-        "name": "checkin_widget",
+        "name": "cg_checkin",
         "description": (
-            "Run the full validation / smoke pipeline and then check the widget into the library. "
-            "Use this only for changes that should become reusable widget logic. "
+            "Run the full validation / smoke pipeline and then check the module into the library. "
+            "Use this only for changes that should become reusable logic. "
             "Requires reason. Supports either path or widget_dir for compatibility."
         ),
         "schema": {
-            "path": {"type": "string", "description": "Widget directory (default: .)."},
-            "widget_dir": {"type": "string", "description": "Alias for path (e.g. cg/backend-retry-python)."},
+            "path": {"type": "string", "description": "Directory (default: .)."},
+            "widget_dir": {"type": "string", "description": "Alias for path."},
             "reason": {"type": "string", "description": "What changed and why."},
             "bump": {"type": "string", "enum": BUMP_TYPES, "description": "Version bump type."},
             "publish": {"type": "boolean", "description": "Publish to cloud after checkin."},
@@ -165,11 +169,51 @@ TOOL_SPECS = [
         "required": ["reason"],
     },
     {
-        "name": "cartograph_config",
+        "name": "cg_blueprint",
         "description": (
-            "Read or update Cartograph workflow defaults used by the daily widget loop. "
-            "Provide key to read the current value; provide both key and value to update it. "
-            "Omit all arguments to list all current configuration settings."
+            "Blueprint-specific composition management. Blueprints are higher-order widgets that "
+            "compose other widgets as dependencies. Use this to add or remove dependencies."
+        ),
+        "schema": {
+            "action": {
+                "type": "string",
+                "enum": BLUEPRINT_ACTIONS,
+                "description": "Blueprint action to perform.",
+            },
+            "name": {"type": "string", "description": "Blueprint name (for create action)."},
+            "blueprint_path": {"type": "string", "description": "Path to the blueprint directory (default: .)."},
+            "widget_id": {"type": "string", "description": "Widget ID to add or remove as a dependency."},
+            "target": {"type": "string", "description": "Target root for create."},
+            "no_validate": {"type": "boolean", "description": "Skip validation when adding dependency."},
+        },
+        "required": ["action"],
+    },
+    {
+        "name": "cg_architect",
+        "description": (
+            "Architectural mapping for the current project. Use this to scaffold an architect.py "
+            "structural map, validate it, render it as a Mermaid diagram, or link widgets to components."
+        ),
+        "schema": {
+            "action": {
+                "type": "string",
+                "enum": ARCHITECT_ACTIONS,
+                "description": "Architect action to perform.",
+            },
+            "path": {"type": "string", "description": "Path to the architect.py file or project root."},
+            "component_id": {"type": "string", "description": "Component ID for link action."},
+            "widget": {"type": "string", "description": "Widget ID or path to link to the component."},
+            "clear": {"type": "boolean", "description": "Clear the link for the specified component."},
+            "output": {"type": "string", "description": "Output path for render action."},
+            "stdout": {"type": "boolean", "description": "Print rendered diagram to stdout."},
+        },
+        "required": ["action"],
+    },
+    {
+        "name": "cg_config",
+        "description": (
+            "Read or update Cartograph workflow defaults. "
+            "Provide key to read the current value; provide both key and value to update it."
         ),
         "schema": {
             "key": {"type": "string", "enum": CONFIG_KEYS, "description": "Configuration key to read or update. Omit to list all settings."},
@@ -177,11 +221,9 @@ TOOL_SPECS = [
         },
     },
     {
-        "name": "cartograph_rules",
+        "name": "cg_rules",
         "description": (
-            "List or manage custom validation rules that run during Cartograph validate and checkin. "
-            "Actions: list shows active rules; init creates a project or global rules file and requires language; "
-            "reset restores a rules file template, requires language, and requires confirm=true."
+            "List or manage custom validation rules that run during Cartograph validate and checkin."
         ),
         "schema": {
             "action": {
@@ -191,7 +233,7 @@ TOOL_SPECS = [
             },
             "language": {
                 "type": "string",
-                "description": "Language for init/reset or optional filter for list, for example python.",
+                "description": "Language filter or target.",
             },
             "scope": {
                 "type": "string",
@@ -200,7 +242,7 @@ TOOL_SPECS = [
             },
             "confirm": {
                 "type": "boolean",
-                "description": "Required as true for reset because reset overwrites rule edits.",
+                "description": "Required as true for reset.",
             },
         },
         "required": ["action"],
@@ -227,11 +269,11 @@ def _run(cmd: list[str]):
     return bridge._run_json_cli(cmd)
 
 
-def _build_registry_widget(args: dict) -> list[str]:
+def _build_cg_registry(args: dict) -> list[str]:
     action = args.get("action")
     if action == "search":
         if "query" not in args:
-            raise ValueError("registry_widget action=search requires query")
+            raise ValueError("cg_registry action=search requires query")
         cmd = ["cartograph", "search", str(args["query"])]
         if "domain" in args:
             cmd.extend(["--domain", str(args["domain"])])
@@ -242,7 +284,7 @@ def _build_registry_widget(args: dict) -> list[str]:
         return cmd
     if action == "inspect":
         if "widget_id" not in args:
-            raise ValueError("registry_widget action=inspect requires widget_id")
+            raise ValueError("cg_registry action=inspect requires widget_id")
         cmd = ["cartograph", "inspect", str(args["widget_id"])]
         if args.get("source") is True:
             cmd.append("--source")
@@ -255,7 +297,7 @@ def _build_registry_widget(args: dict) -> list[str]:
         return cmd
     if action == "install":
         if "widget_id" not in args:
-            raise ValueError("registry_widget action=install requires widget_id")
+            raise ValueError("cg_registry action=install requires widget_id")
         cmd = ["cartograph", "install", str(args["widget_id"])]
         if "target" in args:
             cmd.extend(["--target", str(args["target"])])
@@ -264,20 +306,20 @@ def _build_registry_widget(args: dict) -> list[str]:
         return cmd
     if action == "rate":
         if "widget_ref" not in args:
-            raise ValueError("registry_widget action=rate requires widget_ref")
+            raise ValueError("cg_registry action=rate requires widget_ref")
         if "score" not in args:
-            raise ValueError("registry_widget action=rate requires score")
+            raise ValueError("cg_registry action=rate requires score")
         cmd = ["cartograph", "rate", str(args["widget_ref"]), str(args["score"])]
         if "comment" in args:
             cmd.extend(["--comment", str(args["comment"])])
         return cmd
-    raise ValueError("registry_widget action must be one of: search, inspect, install, rate")
+    raise ValueError("cg_registry action must be one of: search, inspect, install, rate")
 
 
-def _build_installed_widget(args: dict) -> list[str]:
+def _build_cg_installed(args: dict) -> list[str]:
     action = args.get("action")
     if "widget_dir" not in args:
-        raise ValueError("installed_widget requires widget_dir")
+        raise ValueError("cg_installed requires widget_dir")
     if action == "upgrade":
         cmd = ["cartograph", "upgrade", str(args["widget_dir"])]
         if "version" in args:
@@ -285,10 +327,10 @@ def _build_installed_widget(args: dict) -> list[str]:
         return cmd
     if action == "uninstall":
         return ["cartograph", "uninstall", str(args["widget_dir"])]
-    raise ValueError("installed_widget action must be one of: upgrade, uninstall")
+    raise ValueError("cg_installed action must be one of: upgrade, uninstall")
 
 
-def _build_widget_status(args: dict) -> list[str]:
+def _build_cg_status(args: dict) -> list[str]:
     cmd = ["cartograph", "status"]
     if "widget_dir" in args:
         cmd.append(str(args["widget_dir"]))
@@ -301,7 +343,16 @@ def _build_widget_status(args: dict) -> list[str]:
     return cmd
 
 
-def _build_create_widget(args: dict) -> list[str]:
+def _build_cg_create(args: dict) -> list[str]:
+    if args.get("is_blueprint"):
+        cmd = ["cartograph", "blueprint", "create", str(args["name"])]
+        if "target" in args:
+            cmd.extend(["--target", str(args["target"])])
+        return cmd
+        
+    if "domain" not in args or "language" not in args:
+         raise ValueError("cg_create for widgets requires domain and language")
+
     cmd = [
         "cartograph",
         "create",
@@ -318,7 +369,7 @@ def _build_create_widget(args: dict) -> list[str]:
     return cmd
 
 
-def _build_validate_widget(args: dict) -> list[str]:
+def _build_cg_validate(args: dict) -> list[str]:
     cmd = ["cartograph", "validate"]
     if "path" in args:
         cmd.append(str(args["path"]))
@@ -327,7 +378,7 @@ def _build_validate_widget(args: dict) -> list[str]:
     return cmd
 
 
-def _build_checkin_widget(args: dict) -> list[str]:
+def _build_cg_checkin(args: dict) -> list[str]:
     path = args.get("path", args.get("widget_dir"))
     cmd = ["cartograph", "checkin"]
     if path is not None:
@@ -335,8 +386,6 @@ def _build_checkin_widget(args: dict) -> list[str]:
     cmd.extend(["--reason", str(args["reason"])])
     if "bump" in args:
         cmd.extend(["--bump", str(args["bump"])])
-    # Forward both branches explicitly. Without --no-publish, auto_publish=True
-    # would override an agent's deliberate publish=false.
     if args.get("publish") is True:
         cmd.append("--publish")
     elif args.get("publish") is False:
@@ -348,7 +397,63 @@ def _build_checkin_widget(args: dict) -> list[str]:
     return cmd
 
 
-def _build_cartograph_config(args: dict) -> list[str]:
+def _build_cg_blueprint(args: dict) -> list[str]:
+    action = args.get("action")
+    if action == "create":
+        if "name" not in args:
+            raise ValueError("cg_blueprint action=create requires name")
+        cmd = ["cartograph", "blueprint", "create", str(args["name"])]
+        if "target" in args:
+            cmd.extend(["--target", str(args["target"])])
+        return cmd
+    if action == "add-dep":
+        if "widget_id" not in args:
+            raise ValueError("cg_blueprint action=add-dep requires widget_id")
+        cmd = ["cartograph", "blueprint", "add-dep", str(args["widget_id"])]
+        if "blueprint_path" in args:
+            cmd.extend(["--path", str(args["blueprint_path"])])
+        if args.get("no_validate"):
+            cmd.append("--no-validate")
+        return cmd
+    if action == "remove-dep":
+        if "widget_id" not in args:
+            raise ValueError("cg_blueprint action=remove-dep requires widget_id")
+        cmd = ["cartograph", "blueprint", "remove-dep", str(args["widget_id"])]
+        if "blueprint_path" in args:
+            cmd.extend(["--path", str(args["blueprint_path"])])
+        return cmd
+    raise ValueError(f"cg_blueprint action must be one of: {BLUEPRINT_ACTIONS}")
+
+
+def _build_cg_architect(args: dict) -> list[str]:
+    action = args.get("action")
+    if action not in ARCHITECT_ACTIONS:
+        raise ValueError(f"cg_architect action must be one of: {ARCHITECT_ACTIONS}")
+
+    cmd = ["cartograph", "architect", action]
+    if action == "link":
+        if "component_id" not in args:
+            raise ValueError("cg_architect action=link requires component_id")
+        cmd.append(str(args["component_id"]))
+        if args.get("clear"):
+            cmd.append("--clear")
+        elif "widget" in args:
+            cmd.append(str(args["widget"]))
+        if "path" in args:
+            cmd.extend(["--path", str(args["path"])])
+        return cmd
+
+    if "path" in args:
+        cmd.extend(["--path", str(args["path"])])
+    if action == "render":
+        if "output" in args:
+            cmd.extend(["--output", str(args["output"])])
+        if args.get("stdout"):
+            cmd.append("--stdout")
+    return cmd
+
+
+def _build_cg_config(args: dict) -> list[str]:
     cmd = ["cartograph", "config", "--json"]
     if "key" in args:
         cmd.append(str(args["key"]))
@@ -357,14 +462,14 @@ def _build_cartograph_config(args: dict) -> list[str]:
     return cmd
 
 
-def _build_cartograph_rules(args: dict) -> list[str]:
+def _build_cg_rules(args: dict) -> list[str]:
     action = args.get("action")
     if action not in RULE_ACTIONS:
-        raise ValueError("cartograph_rules action must be one of: list, init, reset")
+        raise ValueError("cg_rules action must be one of: list, init, reset")
     if action in {"init", "reset"} and "language" not in args:
-        raise ValueError(f"cartograph_rules action={action} requires language")
+        raise ValueError(f"cg_rules action={action} requires language")
     if action == "reset" and args.get("confirm") is not True:
-        raise ValueError("cartograph_rules action=reset requires confirm=true")
+        raise ValueError("cg_rules action=reset requires confirm=true")
 
     cmd = ["cartograph", "rules", "--json"]
     if action != "list":
@@ -379,14 +484,16 @@ def _build_cartograph_rules(args: dict) -> list[str]:
 
 
 BUILDERS = {
-    "registry_widget": _build_registry_widget,
-    "installed_widget": _build_installed_widget,
-    "widget_status": _build_widget_status,
-    "create_widget": _build_create_widget,
-    "validate_widget": _build_validate_widget,
-    "checkin_widget": _build_checkin_widget,
-    "cartograph_config": _build_cartograph_config,
-    "cartograph_rules": _build_cartograph_rules,
+    "cg_registry": _build_cg_registry,
+    "cg_installed": _build_cg_installed,
+    "cg_status": _build_cg_status,
+    "cg_create": _build_cg_create,
+    "cg_validate": _build_cg_validate,
+    "cg_checkin": _build_cg_checkin,
+    "cg_blueprint": _build_cg_blueprint,
+    "cg_architect": _build_cg_architect,
+    "cg_config": _build_cg_config,
+    "cg_rules": _build_cg_rules,
 }
 
 
