@@ -1,0 +1,26 @@
+{
+  "local_out_of_sync_with_cloud": {
+    "summary": "Local library version differs from cloud (either direction).",
+    "body": "Run `cartograph cloud sync`. Sync is bidirectional: for each widget, whichever side has the higher version wins. Use `--dry-run` first to preview. This is the right answer whether local is ahead, behind, or you don't know."
+  },
+  "checkin_blocked_no_changes": {
+    "summary": "Checkin failed because widget content is identical to the last version.",
+    "body": "The no-op checkin guard refuses to bump a version when nothing actually changed. Either make a real code change or, if you only need to update metadata (tags, description), edit widget.json and stage that change before checkin. Do not work around the guard by adding whitespace."
+  },
+  "validation_contamination_detected": {
+    "summary": "Validation failed with contamination errors (project-specific imports, paths, or symbols).",
+    "body": "Strip everything project-specific from the widget. Common contamination: imports from the consuming app, hardcoded paths, environment-specific config, references to sibling modules outside the widget. The widget must be self-contained in cg/<widget_id>/. Move the project-specific glue back into the consumer app; only the reusable core belongs in the widget."
+  },
+  "publish_blueprint_rejected_public": {
+    "summary": "Cloud publish of a blueprint to the public registry returned 403.",
+    "body": "The public registry refuses blueprints by policy. Blueprints are personal templates or org-internal compositions, not shared library entries. Options: (1) keep the blueprint local, (2) publish to a private/org registry with `--publish` after `cartograph registry add`, (3) extract the reusable parts into individual widgets and publish those instead."
+  },
+  "widget_missing_from_search": {
+    "summary": "A widget exists in the library but doesn't appear in search results.",
+    "body": "The library integrity scan hides widgets without a valid validation stamp. Run `cartograph status <widget_dir>` to confirm. To restore: re-run `cartograph checkin <path> --reason 'restamp'` which re-validates and writes a fresh stamp. Do not edit the stamp file by hand."
+  },
+  "engine_missing_for_language": {
+    "summary": "Validation or scaffolding fails because the language engine is not installed.",
+    "body": "Run `cartograph doctor` to see which engines are present and what each one needs. Install the missing toolchain on the host (e.g. iverilog 12+ for systemverilog, openscad 2021.01+ for modeling, node for javascript/typescript). If the binary is in a non-standard location, set `cartograph config paths.<engine> <path>` so Cartograph can find it."
+  }
+}

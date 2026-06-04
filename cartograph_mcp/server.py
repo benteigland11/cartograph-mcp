@@ -1,7 +1,11 @@
 import asyncio
 import json
+from pathlib import Path
 
 from cartograph_mcp.bridge import McpServerBridge
+
+FAQ_PATH = Path(__file__).parent / "faq.json"
+HELP_ACTIONS = ["list", "get"]
 
 
 SERVER_INSTRUCTIONS = """Cartograph preserves reusable implementation work across projects as widgets and blueprints. Reusable means code, logic, tests, examples, models, geometry, hardware modules, or patterns that would be useful in another project, not just another file in the current project.
@@ -13,7 +17,7 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.1.7", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.2.0", instructions=SERVER_INSTRUCTIONS)
 
 DOMAINS = [
     "backend",
@@ -51,7 +55,6 @@ CONFIG_KEYS = [
 RULE_ACTIONS = ["list", "init", "reset"]
 RULE_SCOPES = ["project", "global"]
 BLUEPRINT_ACTIONS = ["create", "add-dep", "remove-dep"]
-ARCHITECT_ACTIONS = ["init", "validate", "render", "link"]
 
 TOOL_SPECS = [
     {
@@ -72,6 +75,19 @@ TOOL_SPECS = [
             "domain": {"type": "string", "enum": DOMAINS, "description": "Optional search domain filter."},
             "language": {"type": "string", "enum": LANGUAGES, "description": "Optional search language filter."},
             "top_k": {"type": "integer", "description": "Maximum search results to return."},
+            "registry": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Restrict search fan-out to the given registry prefixes (e.g. ['cg'], ['myorg', 'cg']). Without this, all configured registries are searched.",
+            },
+            "owner": {
+                "type": "string",
+                "description": "Filter search to widgets owned by @handle. Requires registry (owner is scoped per-registry).",
+            },
+            "local_only": {
+                "type": "boolean",
+                "description": "Search only the local library; skip all registry calls. Cannot combine with registry/owner.",
+            },
             "widget_id": {"type": "string", "description": "Widget ID. Use the exact value from the 'id' field returned by search."},
             "source": {"type": "boolean", "description": "Include source files for inspect."},
             "all_versions": {"type": "boolean", "description": "Include all historical versions for inspect."},
@@ -189,27 +205,6 @@ TOOL_SPECS = [
         "required": ["action"],
     },
     {
-        "name": "cg_architect",
-        "description": (
-            "Architectural mapping for the current project. Use this to scaffold an architect.py "
-            "structural map, validate it, render it as a Mermaid diagram, or link widgets to components."
-        ),
-        "schema": {
-            "action": {
-                "type": "string",
-                "enum": ARCHITECT_ACTIONS,
-                "description": "Architect action to perform.",
-            },
-            "path": {"type": "string", "description": "Path to the architect.py file or project root."},
-            "component_id": {"type": "string", "description": "Component ID for link action."},
-            "widget": {"type": "string", "description": "Widget ID or path to link to the component."},
-            "clear": {"type": "boolean", "description": "Clear the link for the specified component."},
-            "output": {"type": "string", "description": "Output path for render action."},
-            "stdout": {"type": "boolean", "description": "Print rendered diagram to stdout."},
-        },
-        "required": ["action"],
-    },
-    {
         "name": "cg_config",
         "description": (
             "Read or update Cartograph workflow defaults. "
@@ -247,6 +242,24 @@ TOOL_SPECS = [
         },
         "required": ["action"],
     },
+    {
+        "name": "cg_help",
+        "description": (
+            "Recovery guidance for common Cartograph trouble states (e.g. local out of sync with cloud, "
+            "checkin blocked, validation contamination, publish rejected). Use action=list to browse topics "
+            "with one-line summaries, then action=get with a topic to read the full resolution. "
+            "Reach for this before guessing when an agent is stuck on a Cartograph error state."
+        ),
+        "schema": {
+            "action": {
+                "type": "string",
+                "enum": HELP_ACTIONS,
+                "description": "list returns available topics; get returns the full entry for one topic.",
+            },
+            "topic": {"type": "string", "description": "Topic slug for action=get (from the list output)."},
+        },
+        "required": ["action"],
+    },
 ]
 
 
@@ -274,6 +287,10 @@ def _build_cg_registry(args: dict) -> list[str]:
     if action == "search":
         if "query" not in args:
             raise ValueError("cg_registry action=search requires query")
+        if "owner" in args and "registry" not in args:
+            raise ValueError("cg_registry search 'owner' requires 'registry' (owner is scoped per-registry)")
+        if args.get("local_only") is True and ("registry" in args or "owner" in args):
+            raise ValueError("cg_registry search 'local_only' cannot combine with 'registry' or 'owner'")
         cmd = ["cartograph", "search", str(args["query"])]
         if "domain" in args:
             cmd.extend(["--domain", str(args["domain"])])
@@ -281,6 +298,16 @@ def _build_cg_registry(args: dict) -> list[str]:
             cmd.extend(["--language", str(args["language"])])
         if "top_k" in args:
             cmd.extend(["--top-k", str(args["top_k"])])
+        if "registry" in args:
+            regs = args["registry"]
+            if not isinstance(regs, list):
+                raise ValueError("cg_registry search 'registry' must be an array of prefix strings")
+            for prefix in regs:
+                cmd.extend(["--registry", str(prefix)])
+        if "owner" in args:
+            cmd.extend(["--owner", str(args["owner"])])
+        if args.get("local_only") is True:
+            cmd.append("--local-only")
         return cmd
     if action == "inspect":
         if "widget_id" not in args:
@@ -425,34 +452,6 @@ def _build_cg_blueprint(args: dict) -> list[str]:
     raise ValueError(f"cg_blueprint action must be one of: {BLUEPRINT_ACTIONS}")
 
 
-def _build_cg_architect(args: dict) -> list[str]:
-    action = args.get("action")
-    if action not in ARCHITECT_ACTIONS:
-        raise ValueError(f"cg_architect action must be one of: {ARCHITECT_ACTIONS}")
-
-    cmd = ["cartograph", "architect", action]
-    if action == "link":
-        if "component_id" not in args:
-            raise ValueError("cg_architect action=link requires component_id")
-        cmd.append(str(args["component_id"]))
-        if args.get("clear"):
-            cmd.append("--clear")
-        elif "widget" in args:
-            cmd.append(str(args["widget"]))
-        if "path" in args:
-            cmd.extend(["--path", str(args["path"])])
-        return cmd
-
-    if "path" in args:
-        cmd.extend(["--path", str(args["path"])])
-    if action == "render":
-        if "output" in args:
-            cmd.extend(["--output", str(args["output"])])
-        if args.get("stdout"):
-            cmd.append("--stdout")
-    return cmd
-
-
 def _build_cg_config(args: dict) -> list[str]:
     cmd = ["cartograph", "config", "--json"]
     if "key" in args:
@@ -483,6 +482,35 @@ def _build_cg_rules(args: dict) -> list[str]:
     return cmd
 
 
+def _load_faq() -> dict:
+    try:
+        with FAQ_PATH.open() as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"faq.json is malformed: {exc}")
+
+
+def _handle_cg_help(args: dict) -> dict:
+    action = args.get("action")
+    if action not in HELP_ACTIONS:
+        return _error(f"cg_help action must be one of: {HELP_ACTIONS}")
+    faq = _load_faq()
+    if action == "list":
+        return {
+            "status": "success",
+            "topics": [{"topic": k, "summary": v.get("summary", "")} for k, v in faq.items()],
+        }
+    topic = args.get("topic")
+    if not topic:
+        return _error("cg_help action=get requires topic")
+    entry = faq.get(topic)
+    if not entry:
+        return _error(f"Unknown topic: {topic}. Call action=list to see available topics.")
+    return {"status": "success", "topic": topic, **entry}
+
+
 BUILDERS = {
     "cg_registry": _build_cg_registry,
     "cg_installed": _build_cg_installed,
@@ -491,7 +519,6 @@ BUILDERS = {
     "cg_validate": _build_cg_validate,
     "cg_checkin": _build_cg_checkin,
     "cg_blueprint": _build_cg_blueprint,
-    "cg_architect": _build_cg_architect,
     "cg_config": _build_cg_config,
     "cg_rules": _build_cg_rules,
 }
@@ -506,6 +533,11 @@ async def handle_list_tools():
 
 async def handle_call_tool(name, arguments):
     args = dict(arguments or {})
+    if name == "cg_help":
+        try:
+            return _handle_cg_help(args)
+        except ValueError as exc:
+            return _error(str(exc))
     if name not in BUILDERS:
         return _error(f"Unknown tool: {name}")
     try:

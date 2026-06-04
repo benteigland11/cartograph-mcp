@@ -30,9 +30,9 @@ async def test_list_tools():
         "cg_validate",
         "cg_checkin",
         "cg_blueprint",
-        "cg_architect",
         "cg_config",
         "cg_rules",
+        "cg_help",
     ]
 
 
@@ -156,6 +156,21 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
         ),
         (
             "cg_registry",
+            {"action": "search", "query": "retry", "registry": ["myorg", "cg"]},
+            ["cartograph", "search", "retry", "--registry", "myorg", "--registry", "cg"],
+        ),
+        (
+            "cg_registry",
+            {"action": "search", "query": "retry", "registry": ["cg"], "owner": "@ben"},
+            ["cartograph", "search", "retry", "--registry", "cg", "--owner", "@ben"],
+        ),
+        (
+            "cg_registry",
+            {"action": "search", "query": "retry", "local_only": True},
+            ["cartograph", "search", "retry", "--local-only"],
+        ),
+        (
+            "cg_registry",
             {
                 "action": "inspect",
                 "widget_id": "backend-retry-python",
@@ -273,16 +288,6 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
             ["cartograph", "blueprint", "add-dep", "backend-retry-python", "--path", "cg/my-bp", "--no-validate"],
         ),
         (
-            "cg_architect",
-            {"action": "init", "path": "project/"},
-            ["cartograph", "architect", "init", "--path", "project/"],
-        ),
-        (
-            "cg_architect",
-            {"action": "link", "component_id": "api", "widget": "backend-api-python"},
-            ["cartograph", "architect", "link", "api", "backend-api-python"],
-        ),
-        (
             "cg_config",
             {},
             ["cartograph", "config", "--json"],
@@ -303,6 +308,9 @@ async def test_command_shapes_are_fully_expected(tool_name, arguments, expected_
     ("tool_name", "arguments", "message_fragment"),
     [
         ("cg_registry", {"action": "search"}, "requires query"),
+        ("cg_registry", {"action": "search", "query": "retry", "owner": "@ben"}, "requires 'registry'"),
+        ("cg_registry", {"action": "search", "query": "retry", "local_only": True, "registry": ["cg"]}, "cannot combine"),
+        ("cg_registry", {"action": "search", "query": "retry", "registry": "cg"}, "must be an array"),
         ("cg_registry", {"action": "inspect"}, "requires widget_id"),
         ("cg_registry", {"action": "install"}, "requires widget_id"),
         ("cg_registry", {"action": "rate", "widget_ref": "@owner/widget"}, "requires score"),
@@ -313,10 +321,40 @@ async def test_command_shapes_are_fully_expected(tool_name, arguments, expected_
         ("cg_rules", {"action": "init"}, "requires language"),
         ("cg_rules", {"action": "reset", "language": "python"}, "requires confirm=true"),
         ("cg_blueprint", {"action": "add-dep"}, "requires widget_id"),
-        ("cg_architect", {"action": "link"}, "requires component_id"),
     ],
 )
 async def test_invalid_argument_combinations_return_clear_errors(tool_name, arguments, message_fragment):
     result = await handle_call_tool(tool_name, arguments)
     assert result["status"] == "error"
     assert message_fragment in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_cg_help_list_returns_topics_from_faq():
+    result = await handle_call_tool("cg_help", {"action": "list"})
+    assert result["status"] == "success"
+    assert isinstance(result["topics"], list)
+    assert all("topic" in t and "summary" in t for t in result["topics"])
+    assert any(t["topic"] == "local_out_of_sync_with_cloud" for t in result["topics"])
+
+
+@pytest.mark.asyncio
+async def test_cg_help_get_returns_full_entry():
+    result = await handle_call_tool("cg_help", {"action": "get", "topic": "local_out_of_sync_with_cloud"})
+    assert result["status"] == "success"
+    assert result["topic"] == "local_out_of_sync_with_cloud"
+    assert "cartograph cloud sync" in result["body"]
+
+
+@pytest.mark.asyncio
+async def test_cg_help_get_unknown_topic_errors():
+    result = await handle_call_tool("cg_help", {"action": "get", "topic": "does-not-exist"})
+    assert result["status"] == "error"
+    assert "Unknown topic" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_cg_help_get_without_topic_errors():
+    result = await handle_call_tool("cg_help", {"action": "get"})
+    assert result["status"] == "error"
+    assert "requires topic" in result["message"]
