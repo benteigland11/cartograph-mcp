@@ -28,6 +28,13 @@ bridge = McpServerBridge("cartograph", version="0.2.1", instructions=SERVER_INST
 # directory shadow it. -P keeps sys.path[0] (cwd/script dir) out of the
 # interpreter, so resolution always hits the installed CLI.
 #
+# -P alone is not enough: an editable install's .pth can put a project root
+# (with its own regular cg/ package) on sys.path, and PEP 420 lets a regular
+# package beat the CLI's namespace-package cg regardless of path order. The
+# subprocess therefore drops any sys.path entry carrying a regular cg package
+# (cg/__init__.py) before importing; the CLI's cg has no __init__.py and
+# survives the filter.
+#
 # Hardcoded fallbacks only keep the server bootable if the contract ever
 # breaks; they are not maintained as a second source of truth, and
 # ENUM_SOURCE lets tests forbid them from silently taking over.
@@ -35,7 +42,9 @@ def _cli_enums() -> dict:
     import subprocess
     import sys
     code = (
-        "import json\n"
+        "import json, os, sys\n"
+        "sys.path = [p for p in sys.path"
+        " if not os.path.isfile(os.path.join(p, 'cg', '__init__.py'))]\n"
         "from cartograph.validator import VALID_DOMAINS\n"
         "from cartograph.languages.registry import supported_languages\n"
         "from cartograph.config import config_keys\n"
