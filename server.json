@@ -3,7 +3,7 @@
   "name": "io.github.benteigland11/cartograph",
   "title": "Cartograph",
   "description": "Local-first reusable implementation registry for AI agents and versioned widgets.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/benteigland11/cartograph-mcp/main/logo.svg",
@@ -21,7 +21,7 @@
     {
       "registryType": "pypi",
       "identifier": "cartograph-mcp",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "transport": {
         "type": "stdio"
       }

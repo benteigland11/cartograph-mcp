@@ -358,3 +358,23 @@ async def test_cg_help_get_without_topic_errors():
     result = await handle_call_tool("cg_help", {"action": "get"})
     assert result["status"] == "error"
     assert "requires topic" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# Enum derivation — MCP enums must come FROM the CLI, never a manual copy
+# ---------------------------------------------------------------------------
+
+def test_enums_come_from_cli_not_fallback():
+    """The hardcoded fallbacks must never silently take over when the CLI
+    is installed (which it always is - it's a hard dependency)."""
+    from cartograph_mcp.server import ENUM_SOURCE
+    assert ENUM_SOURCE == "cli"
+
+
+def test_enums_match_fresh_cli_derivation():
+    """Server enums equal what the installed CLI reports right now."""
+    from cartograph_mcp.server import _cli_enums, DOMAINS, LANGUAGES, CONFIG_KEYS
+    fresh = _cli_enums()
+    assert DOMAINS == fresh["domains"]
+    assert LANGUAGES == fresh["languages"]
+    assert CONFIG_KEYS == fresh["config_keys"]

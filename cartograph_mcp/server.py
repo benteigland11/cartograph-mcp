@@ -17,41 +17,57 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.2.0", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.2.1", instructions=SERVER_INSTRUCTIONS)
 
-DOMAINS = [
-    "backend",
-    "data",
-    "frontend",
-    "infra",
-    "ml",
-    "modeling",
-    "rtl",
-    "security",
-    "universal",
-    "devops",
-]
+# Enums are derived from cartograph-cli (a hard dependency) so they track the
+# CLI surface instead of drifting as new domains/languages/settings land.
+#
+# Derivation runs in a `python -P` subprocess rather than a direct import:
+# the CLI ships its bundled widgets as a top-level `cg` package, and a direct
+# import from a consumer project root would let that project's own cg/
+# directory shadow it. -P keeps sys.path[0] (cwd/script dir) out of the
+# interpreter, so resolution always hits the installed CLI.
+#
+# Hardcoded fallbacks only keep the server bootable if the contract ever
+# breaks; they are not maintained as a second source of truth, and
+# ENUM_SOURCE lets tests forbid them from silently taking over.
+def _cli_enums() -> dict:
+    import subprocess
+    import sys
+    code = (
+        "import json\n"
+        "from cartograph.validator import VALID_DOMAINS\n"
+        "from cartograph.languages.registry import supported_languages\n"
+        "from cartograph.config import config_keys\n"
+        "print(json.dumps({"
+        "'domains': sorted(VALID_DOMAINS),"
+        "'languages': sorted(supported_languages()),"
+        "'config_keys': config_keys()}))"
+    )
+    proc = subprocess.run([sys.executable, "-P", "-c", code],
+                          capture_output=True, text=True, timeout=30)
+    if proc.returncode != 0:
+        raise RuntimeError(f"cartograph-cli enum derivation failed: {proc.stderr.strip()}")
+    return json.loads(proc.stdout)
 
-LANGUAGES = [
-    "angular",
-    "javascript",
-    "nim",
-    "openscad",
-    "php",
-    "python",
-    "systemverilog",
-    "typescript",
-]
+
+try:
+    _enums = _cli_enums()
+    DOMAINS = _enums["domains"]
+    LANGUAGES = _enums["languages"]
+    CONFIG_KEYS = _enums["config_keys"]
+    ENUM_SOURCE = "cli"
+except Exception:
+    DOMAINS = ["backend", "data", "devops", "frontend", "infra", "ml",
+               "modeling", "rtl", "security", "universal"]
+    LANGUAGES = ["angular", "javascript", "nim", "openscad", "php",
+                 "python", "systemverilog", "terraform", "typescript"]
+    CONFIG_KEYS = ["auto-publish", "auto-update", "cloud", "governance",
+                   "publish-registry", "search-priority", "show-unavailable",
+                   "visibility"]
+    ENUM_SOURCE = "fallback"
 
 BUMP_TYPES = ["major", "minor", "patch"]
-CONFIG_KEYS = [
-    "auto-publish",
-    "visibility",
-    "governance",
-    "cloud",
-    "show-unavailable",
-    "publish-registry",
-]
 RULE_ACTIONS = ["list", "init", "reset"]
 RULE_SCOPES = ["project", "global"]
 BLUEPRINT_ACTIONS = ["create", "add-dep", "remove-dep"]

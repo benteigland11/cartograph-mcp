@@ -132,8 +132,10 @@ async def test_end_to_end_daily_workflow(isolated_env):
         "cg_registry",
         {"action": "search", "query": "mcp-smoke"},
     )
-    assert "widgets" in search_data
-    assert any(widget["id"] == "backend-mcp-smoke-python" for widget in search_data["widgets"])
+    # Search payload separates local and registry pools (each: count + widgets)
+    assert "local" in search_data and "registry" in search_data
+    assert any(widget["id"] == "backend-mcp-smoke-python"
+               for widget in search_data["local"]["widgets"])
 
     inspect_data = await _call_and_parse(
         "cg_registry",
