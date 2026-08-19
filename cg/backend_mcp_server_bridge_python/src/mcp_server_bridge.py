@@ -5,9 +5,10 @@ import re
 from typing import Any, Dict, List, Optional, Callable, Union, Tuple
 
 import mcp.server.stdio
-from mcp.server import Server, NotificationOptions
-from mcp.server.models import InitializationOptions
+from mcp.server import Server
 from mcp.types import (
+    CallToolRequestParams,
+    CallToolResult,
     Tool,
     ListToolsRequest,
     ListToolsResult,
@@ -20,13 +21,16 @@ class McpServerBridge:
     """Declarative bridge to expose CLI commands as MCP tools."""
 
     def __init__(self, name: str, version: str = "0.1.0", instructions: Optional[str] = None):
-        self.server = Server(name, instructions=instructions)
         self.version = version
         self.tools: Dict[str, Dict[str, Any]] = {}
 
-        # Register handlers
-        self.server.list_tools()(self.handle_list_tools)
-        self.server.call_tool()(self.handle_call_tool)
+        self.server = Server(
+            name,
+            version=version,
+            instructions=instructions,
+            on_list_tools=self._handle_list_tools_request,
+            on_call_tool=self._handle_call_tool_request,
+        )
 
     def add_tool(
         self,
@@ -58,7 +62,10 @@ class McpServerBridge:
             "env": env
         }
 
-    async def handle_list_tools(self, request: ListToolsRequest) -> ListToolsResult:
+    async def _handle_list_tools_request(self, _ctx, _params) -> ListToolsResult:
+        return await self.handle_list_tools(_params)
+
+    async def handle_list_tools(self, request: ListToolsRequest | None = None) -> ListToolsResult:
         """Return the MCP 2.0 ``tools/list`` result envelope."""
         del request
         return ListToolsResult(
@@ -75,6 +82,10 @@ class McpServerBridge:
                 for name, t in self.tools.items()
             ]
         )
+
+    async def _handle_call_tool_request(self, _ctx, params: CallToolRequestParams) -> CallToolResult:
+        content = await self.handle_call_tool(params.name, params.arguments)
+        return CallToolResult(content=content)
 
     async def handle_call_tool(
         self, name: str, arguments: Dict[str, Any] | None
@@ -158,13 +169,5 @@ class McpServerBridge:
             await self.server.run(
                 read_stream,
                 write_stream,
-                InitializationOptions(
-                    server_name=self.server.name,
-                    server_version=self.version,
-                    instructions=self.server.instructions,
-                    capabilities=self.server.get_capabilities(
-                        notification_options=NotificationOptions(),
-                        experimental_capabilities={},
-                    ),
-                ),
+                self.server.create_initialization_options(),
             )

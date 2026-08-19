@@ -2,7 +2,7 @@ import asyncio
 import json
 from pathlib import Path
 
-from mcp.types import ListToolsRequest, ListToolsResult
+from mcp.types import CallToolRequestParams, CallToolResult, ListToolsRequest, ListToolsResult, TextContent
 
 from cartograph_mcp.bridge import McpServerBridge
 
@@ -19,7 +19,7 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.3.0", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.3.1", instructions=SERVER_INSTRUCTIONS)
 
 # Enums are derived from cartograph-cli (a hard dependency) so they track the
 # CLI surface instead of drifting as new domains/languages/settings land.
@@ -577,7 +577,16 @@ async def handle_call_tool(name, arguments):
     return _run(cmd)
 
 
-bridge.server.call_tool()(handle_call_tool)
+async def _handle_call_tool_request(_ctx, params: CallToolRequestParams) -> CallToolResult:
+    """Adapt the Cartograph dispatcher to the MCP 2.0 handler contract."""
+    result = await handle_call_tool(params.name, params.arguments)
+    return CallToolResult(
+        content=[TextContent(type="text", text=json.dumps(result, indent=2))],
+        structured_content=result,
+    )
+
+
+bridge.server.add_request_handler("tools/call", CallToolRequestParams, _handle_call_tool_request)
 
 
 async def _run_server():

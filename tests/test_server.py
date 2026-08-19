@@ -22,7 +22,7 @@ async def _assert_command(tool_name, arguments, expected_cmd):
 async def test_list_tools():
     result = await handle_list_tools()
     assert isinstance(result, types.ListToolsResult)
-    assert result.nextCursor is None
+    assert result.next_cursor is None
     assert len(result.tools) == 10
     assert [t.name for t in result.tools] == [
         "cg_registry",
@@ -40,12 +40,13 @@ async def test_list_tools():
 
 @pytest.mark.asyncio
 async def test_registered_list_tools_handler_returns_mcp_result_envelope():
-    request = types.ListToolsRequest(method="tools/list")
+    handler_entry = bridge.server.get_request_handler("tools/list")
+    assert handler_entry is not None
 
-    result = await bridge.server.request_handlers[types.ListToolsRequest](request)
+    result = await handler_entry.handler(None, None)
 
-    assert isinstance(result.root, types.ListToolsResult)
-    assert [tool.name for tool in result.root.tools] == [
+    assert isinstance(result, types.ListToolsResult)
+    assert [tool.name for tool in result.tools] == [
         "cg_registry",
         "cg_installed",
         "cg_status",
@@ -152,20 +153,19 @@ async def test_cartograph_config_updates_value():
 
 @pytest.mark.asyncio
 async def test_registered_mcp_handler_uses_custom_dispatcher():
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(
-            name="cg_config",
-            arguments={"key": "auto-publish"},
-        ),
+    handler_entry = bridge.server.get_request_handler("tools/call")
+    assert handler_entry is not None
+    params = types.CallToolRequestParams(
+        name="cg_config",
+        arguments={"key": "auto-publish"},
     )
 
     with patch.object(bridge, "_run_json_cli", return_value={"status": "success", "key": "auto-publish"}) as mock_run:
-        result = await bridge.server.request_handlers[types.CallToolRequest](request)
+        result = await handler_entry.handler(None, params)
 
     assert mock_run.call_args.args[0] == ["cartograph", "config", "--json", "auto-publish"]
-    assert result.root.structuredContent == {"status": "success", "key": "auto-publish"}
-    assert json.loads(result.root.content[0].text) == {"status": "success", "key": "auto-publish"}
+    assert result.structured_content == {"status": "success", "key": "auto-publish"}
+    assert json.loads(result.content[0].text) == {"status": "success", "key": "auto-publish"}
 
 
 @pytest.mark.asyncio

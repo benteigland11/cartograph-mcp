@@ -28,7 +28,7 @@ async def test_list_tools_exposes_schema_and_required_fields():
     assert isinstance(result, ListToolsResult)
     assert len(result.tools) == 1
     assert result.tools[0].name == "search"
-    assert result.tools[0].inputSchema["required"] == ["query"]
+    assert result.tools[0].input_schema["required"] == ["query"]
 
 
 @pytest.mark.asyncio
