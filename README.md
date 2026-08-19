@@ -8,7 +8,7 @@ mcp-name: io.github.benteigland11/cartograph
 Tired of vibe coding the same solutions **over and over**?
 Time to stop spending money on **redundant tokens** and start spending it on **innovative solutions**.
 
-This MCP server is for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. On installation of the MCP the CLI will be installed automatically. Once you have it, Search, inspect, install, create, validate, check in, custom rules, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
+This MCP server is for [Cartograph](https://github.com/benteigland11/Cartograph) that exposes the daily widget workflow for agents without mirroring the entire CLI. It targets the MCP 2.0 SDK contract and returns the standard `ListToolsResult` envelope from `tools/list`. On installation of the MCP the CLI will be installed automatically. Once you have it, Search, inspect, install, create, validate, check in, custom rules, and configure Cartograph defaults through a compact agent-facing surface, then fall back to the CLI for the full administrative and recovery surface.
 
 It is highly recommended to use the [plugins](https://github.com/benteigland11/cartograph-plugins) for the skills that go with this MCP. It will give your agent what it needs to explain a lot of the configuration and give you a very powerful workflow tool.
 

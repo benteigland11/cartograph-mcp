@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from mcp.types import ListToolsRequest, ListToolsResult
 
 from src.mcp_server_bridge import McpServerBridge
 
@@ -22,11 +23,12 @@ async def test_list_tools_exposes_schema_and_required_fields():
         command_template=["cartograph", "search", "{query}"],
     )
 
-    tools = await bridge.handle_list_tools()
+    result = await bridge.handle_list_tools(ListToolsRequest(method="tools/list"))
 
-    assert len(tools) == 1
-    assert tools[0].name == "search"
-    assert tools[0].inputSchema["required"] == ["query"]
+    assert isinstance(result, ListToolsResult)
+    assert len(result.tools) == 1
+    assert result.tools[0].name == "search"
+    assert result.tools[0].inputSchema["required"] == ["query"]
 
 
 @pytest.mark.asyncio

@@ -6,7 +6,14 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import mcp.server.stdio
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
-from mcp.types import EmbeddedResource, ImageContent, TextContent, Tool
+from mcp.types import (
+    EmbeddedResource,
+    ImageContent,
+    ListToolsRequest,
+    ListToolsResult,
+    TextContent,
+    Tool,
+)
 
 
 class McpServerBridge:
@@ -38,20 +45,29 @@ class McpServerBridge:
             "env": env,
         }
 
-    async def handle_list_tools(self) -> List[Tool]:
-        """MCP list_tools handler."""
-        return [
-            Tool(
-                name=name,
-                description=t["description"],
-                inputSchema={
-                    "type": "object",
-                    "properties": t["schema"],
-                    "required": t["required"],
-                },
-            )
-            for name, t in self.tools.items()
-        ]
+    async def handle_list_tools(self, request: ListToolsRequest) -> ListToolsResult:
+        """Return the MCP 2.0 ``tools/list`` result envelope.
+
+        The SDK's current handler contract passes a ``ListToolsRequest`` and
+        expects a ``ListToolsResult``.  This server has a small, non-paginated
+        tool catalog, so the cursor is intentionally ignored and all tools
+        are returned in registration order.
+        """
+        del request
+        return ListToolsResult(
+            tools=[
+                Tool(
+                    name=name,
+                    description=t["description"],
+                    inputSchema={
+                        "type": "object",
+                        "properties": t["schema"],
+                        "required": t["required"],
+                    },
+                )
+                for name, t in self.tools.items()
+            ]
+        )
 
     async def handle_call_tool(
         self, name: str, arguments: Dict[str, Any] | None

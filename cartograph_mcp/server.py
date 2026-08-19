@@ -2,6 +2,8 @@ import asyncio
 import json
 from pathlib import Path
 
+from mcp.types import ListToolsRequest, ListToolsResult
+
 from cartograph_mcp.bridge import McpServerBridge
 
 FAQ_PATH = Path(__file__).parent / "faq.json"
@@ -17,7 +19,7 @@ This MCP is intentionally not the full Cartograph CLI. For commands or options n
 When creating widgets through this MCP, pass only the widget slug as `name`; Cartograph composes the full widget_id from `domain`, `name`, and `language`. Installed widgets normally live under `cg/<widget_id>/`."""
 
 
-bridge = McpServerBridge("cartograph", version="0.2.1", instructions=SERVER_INSTRUCTIONS)
+bridge = McpServerBridge("cartograph", version="0.3.0", instructions=SERVER_INSTRUCTIONS)
 
 # Enums are derived from cartograph-cli (a hard dependency) so they track the
 # CLI surface instead of drifting as new domains/languages/settings land.
@@ -552,8 +554,11 @@ BUILDERS = {
 _register_tools()
 
 
-async def handle_list_tools():
-    return await bridge.handle_list_tools()
+async def handle_list_tools(request: ListToolsRequest | None = None) -> ListToolsResult:
+    """Expose the MCP 2.0 list-tools envelope for direct callers and tests."""
+    if request is None:
+        request = ListToolsRequest(method="tools/list")
+    return await bridge.handle_list_tools(request)
 
 
 async def handle_call_tool(name, arguments):

@@ -9,6 +9,8 @@ from mcp.server import Server, NotificationOptions
 from mcp.server.models import InitializationOptions
 from mcp.types import (
     Tool,
+    ListToolsRequest,
+    ListToolsResult,
     TextContent,
     ImageContent,
     EmbeddedResource,
@@ -56,20 +58,23 @@ class McpServerBridge:
             "env": env
         }
 
-    async def handle_list_tools(self) -> List[Tool]:
-        """MCP list_tools handler."""
-        return [
-            Tool(
-                name=name,
-                description=t["description"],
-                inputSchema={
-                    "type": "object",
-                    "properties": t["schema"],
-                    "required": t["required"],
-                },
-            )
-            for name, t in self.tools.items()
-        ]
+    async def handle_list_tools(self, request: ListToolsRequest) -> ListToolsResult:
+        """Return the MCP 2.0 ``tools/list`` result envelope."""
+        del request
+        return ListToolsResult(
+            tools=[
+                Tool(
+                    name=name,
+                    description=t["description"],
+                    inputSchema={
+                        "type": "object",
+                        "properties": t["schema"],
+                        "required": t["required"],
+                    },
+                )
+                for name, t in self.tools.items()
+            ]
+        )
 
     async def handle_call_tool(
         self, name: str, arguments: Dict[str, Any] | None

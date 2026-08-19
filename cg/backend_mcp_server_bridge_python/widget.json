@@ -2,7 +2,7 @@
   "meta": {
     "id": "backend-mcp-server-bridge-python",
     "name": "Mcp Server Bridge",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "domain": "backend",
     "tags": [
       "[TODO: add 3-5 tags]"

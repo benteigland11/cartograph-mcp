@@ -20,9 +20,32 @@ async def _assert_command(tool_name, arguments, expected_cmd):
 
 @pytest.mark.asyncio
 async def test_list_tools():
-    tools = await handle_list_tools()
-    assert len(tools) == 10
-    assert [t.name for t in tools] == [
+    result = await handle_list_tools()
+    assert isinstance(result, types.ListToolsResult)
+    assert result.nextCursor is None
+    assert len(result.tools) == 10
+    assert [t.name for t in result.tools] == [
+        "cg_registry",
+        "cg_installed",
+        "cg_status",
+        "cg_create",
+        "cg_validate",
+        "cg_checkin",
+        "cg_blueprint",
+        "cg_config",
+        "cg_rules",
+        "cg_help",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_registered_list_tools_handler_returns_mcp_result_envelope():
+    request = types.ListToolsRequest(method="tools/list")
+
+    result = await bridge.server.request_handlers[types.ListToolsRequest](request)
+
+    assert isinstance(result.root, types.ListToolsResult)
+    assert [tool.name for tool in result.root.tools] == [
         "cg_registry",
         "cg_installed",
         "cg_status",
