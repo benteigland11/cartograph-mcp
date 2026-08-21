@@ -227,7 +227,14 @@ TOOL_SPECS = [
             "blueprint_path": {"type": "string", "description": "Path to the blueprint directory (default: .)."},
             "widget_id": {"type": "string", "description": "Widget ID to add or remove as a dependency."},
             "target": {"type": "string", "description": "Target root for create."},
-            "no_validate": {"type": "boolean", "description": "Skip validation when adding dependency."},
+            "no_validate": {
+                "type": "boolean",
+                "description": "Skip validation after add-dep/remove-dep. This is now the default; kept for compatibility.",
+            },
+            "validate": {
+                "type": "boolean",
+                "description": "After add-dep/remove-dep, run full blueprint validation and revert on failure. Default is pin-only.",
+            },
         },
         "required": ["action"],
     },
@@ -451,6 +458,15 @@ def _build_cg_checkin(args: dict) -> list[str]:
     return cmd
 
 
+def _blueprint_validate_flags(args: dict) -> list[str]:
+    """Opt-in full validate after pin. Skip is the default."""
+    if args.get("validate"):
+        return ["--validate"]
+    if args.get("no_validate"):
+        return ["--no-validate"]
+    return []
+
+
 def _build_cg_blueprint(args: dict) -> list[str]:
     action = args.get("action")
     if action == "create":
@@ -466,8 +482,7 @@ def _build_cg_blueprint(args: dict) -> list[str]:
         cmd = ["cartograph", "blueprint", "add-dep", str(args["widget_id"])]
         if "blueprint_path" in args:
             cmd.extend(["--path", str(args["blueprint_path"])])
-        if args.get("no_validate"):
-            cmd.append("--no-validate")
+        cmd.extend(_blueprint_validate_flags(args))
         return cmd
     if action == "remove-dep":
         if "widget_id" not in args:
@@ -475,6 +490,7 @@ def _build_cg_blueprint(args: dict) -> list[str]:
         cmd = ["cartograph", "blueprint", "remove-dep", str(args["widget_id"])]
         if "blueprint_path" in args:
             cmd.extend(["--path", str(args["blueprint_path"])])
+        cmd.extend(_blueprint_validate_flags(args))
         return cmd
     raise ValueError(f"cg_blueprint action must be one of: {BLUEPRINT_ACTIONS}")
 

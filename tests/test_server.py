@@ -307,8 +307,23 @@ async def test_registered_mcp_handler_uses_custom_dispatcher():
         ),
         (
             "cg_blueprint",
+            {"action": "add-dep", "widget_id": "backend-retry-python", "blueprint_path": "cg/my-bp"},
+            ["cartograph", "blueprint", "add-dep", "backend-retry-python", "--path", "cg/my-bp"],
+        ),
+        (
+            "cg_blueprint",
             {"action": "add-dep", "widget_id": "backend-retry-python", "blueprint_path": "cg/my-bp", "no_validate": True},
             ["cartograph", "blueprint", "add-dep", "backend-retry-python", "--path", "cg/my-bp", "--no-validate"],
+        ),
+        (
+            "cg_blueprint",
+            {"action": "add-dep", "widget_id": "backend-retry-python", "blueprint_path": "cg/my-bp", "validate": True},
+            ["cartograph", "blueprint", "add-dep", "backend-retry-python", "--path", "cg/my-bp", "--validate"],
+        ),
+        (
+            "cg_blueprint",
+            {"action": "remove-dep", "widget_id": "backend-retry-python", "blueprint_path": "cg/my-bp", "validate": True},
+            ["cartograph", "blueprint", "remove-dep", "backend-retry-python", "--path", "cg/my-bp", "--validate"],
         ),
         (
             "cg_config",
