@@ -1,5 +1,6 @@
 .codex
 .codex/
+.claude/settings.local.json
 .pytest_cache/
 dist/
 __pycache__/
