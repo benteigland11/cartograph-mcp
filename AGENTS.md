@@ -1,160 +1,44 @@
+# cartograph-mcp
 
-## Cartograph
+MCP server that exposes the Cartograph CLI to agents (PyPI `cartograph-mcp`,
+module `cartograph_mcp.server`). It wraps CLI commands; it does not
+re-implement them (`cg_help` serves local FAQ entries). The CLI owns the logic.
 
-Widget library manager. Widgets are reusable code modules with tests,
-examples, and metadata. Installed widgets live under `cg/<widget_id>/`.
+Source of truth for commands and flags: `cartograph --help` and
+`cartograph <command> --help`. Do not copy the command list into this file.
+Domain, language, and config enums are derived from the CLI in code (below).
 
-widget_id format: `<domain>-<name>-<language>` (e.g. `backend-retry-backoff-python`)
+## Rules
 
-When using `cartograph create`, only provide the name. The `--domain` and
-`--language` flags are prepended and appended automatically.
-Example: `cartograph create retry-backoff --domain backend --language python`
-creates `backend-retry-backoff-python`.
+- **Enums come from the CLI.** DOMAINS / LANGUAGES / CONFIG_KEYS are derived
+  at server start via `_cli_enums()` (subprocess). A guard test requires
+  `ENUM_SOURCE == "cli"`; the hardcoded boot fallback must not silently take over.
+- **JSON contract:** the MCP tools that shell out (search, inspect, install,
+  rate, uninstall, upgrade, status, create, validate, checkin, blueprint)
+  parse JSON from the CLI. `cg_config` and `cg_rules` call `config` and
+  `rules` with `--json`. `cg_help` reads local FAQ data and is not a CLI
+  command. stats, rollback, login, doctor, setup, and cloud
+  publish/sync/proposals stay off the MCP surface.
+- **Release order:** a `cartograph-cli>=X` floor bump lands only after X is
+  live on PyPI (check the PyPI listing; the simple index lags the JSON API by
+  minutes). Pushing early breaks this repo's CI on dependency resolution.
+- Don't bump this package for a plugin skill-only change; bump it only when
+  the CLI flags agents actually pass have changed.
 
-### Domains
+## Using Cartograph while working here (workflow)
 
-    backend    Request handling, APIs, databases, queues, caching
-    data       Transformation, parsing, serialization, pipelines, file I/O
-    ml         Model loading, inference, embeddings, training utilities
-    security   Authentication, authorization, encryption, input sanitization
-    infra      Deployment, config management, logging, monitoring, health checks
-    frontend   UI rendering, templating, client-side logic
-    universal  Pure utilities with no domain dependency (string ops, retry, math, date handling)
-    modeling   Parametric and generative representations of physical or visual things — 3D geometry, surfaces, shapes, simulations
-    rtl        Register-transfer level hardware design — synthesizable digital logic modules
+1. Plan the components before building.
+2. Prefer improving a widget you already use; read it before deciding.
+3. Search the library before writing new logic.
+4. Install widgets, then write glue. Don't edit widget source for wiring.
+5. Edit a widget only to check it back in as a general improvement.
+6. Validate before checking in; check in before publishing.
 
-### Config keys  (set with: cartograph config <key> <value>)
+Reusable code is any code another project would write. Peel back "project
+specific" logic: much of it is a widget.
 
-    auto-publish       Auto-publish to cloud on every checkin  (default: False)
-    visibility         Default visibility for published widgets  (default: public)
-    governance         Default contribution governance model  (default: protected)
-    cloud              Enable cloud registry integration  (default: True)
-    show-unavailable   Show widgets for languages not installed on this machine  (default: True)
-    publish-registry   Default registry prefix for --publish on local widgets (e.g. myorg). Defaults to the public registry (cg) if not set.  (default: —)
+## Repo rules
 
-### Commands
-
-All commands run from your project root. Widgets install to `cg/` in the
-current directory (or the directory specified by `--target`).
-
-**Use widgets**
-
-    search <query> [--domain DOMAIN] [--language LANGUAGE] [--top-k 10]
-      Search the widget library
-
-    inspect <widget_id> [--source] [--all-versions] [--reviews] [--version VERSION]
-      Show widget details
-
-    install <widget_id> [--target .] [--version VERSION]
-      Install a widget into your project
-
-    uninstall <widget_dir>
-      Remove a widget from your project
-
-    upgrade <widget_dir> [--version VERSION]
-      Upgrade an installed widget to the latest version
-
-    status [widget_dir] [--page 1] [--size 20] [--all]
-      Check installed widget(s) - omit widget_dir to scan all
-
-    rate <widget_id> <score> [--comment COMMENT]
-      Rate a widget (local dir path or @handle/widget-id for cloud)
-
-
-**Build widgets**
-
-    create <widget_id> [--language angular|javascript|nim|openscad|php|python|systemverilog|typescript] [--domain backend|data|frontend|infra|ml|modeling|rtl|security|universal] [--name NAME] [--target .]
-      Scaffold a new widget
-
-    rename <widget_id> [--name NAME] [--domain backend|data|frontend|infra|ml|modeling|rtl|security|universal] [--target .]
-      Rename a scaffolded widget's slug or domain (pre-checkin, Python-only)
-
-    validate [path] [--lib]
-      Run the validation pipeline on a widget
-
-    checkin [path] [--reason REASON] [--bump minor] [--publish] [--override-warnings] [--override-reason OVERRIDE_REASON]
-      Check a widget into the library (--publish to also publish)
-
-    rollback <widget_id> [--version VERSION] [--reason REASON]
-      Roll back a widget to a previous version (local + cloud)
-
-    delete <widget_id> [--confirm]
-      Remove a widget from the library (and cloud if published)
-
-
-**Cloud registry**
-
-    cloud publish [widget_id] [path] [--lib] [--visibility public|private] [--governance open|protected] [--override-warnings] [--override-reason OVERRIDE_REASON]
-      Publish a widget to the cloud registry
-
-    cloud adopt <local_id> <cloud_id> [--force]
-      Link a local widget to its cloud counterpart
-
-    cloud unpublish <widget_id> [--confirm]
-      Remove a widget from the cloud (keeps local)
-
-    cloud settings <widget_id> [--governance open|protected] [--visibility public|private]
-      View or change a cloud widget's settings
-
-    cloud sync [--dry-run]
-      Sync library with cloud (higher version wins, both directions)
-
-    cloud proposals [widget_id] [proposal_id] [--accept] [--reject] [--reason REASON]
-      List, accept, or reject proposals
-
-
-**Config**
-
-    registry [action] [url] [--prefix PREFIX] [reg_prefix]
-      Manage additional widget registries
-
-    config [key] [value]
-      View or change settings (config [key] [value])
-
-    rules [action] [--language LANGUAGE] [--global project] [--confirm]
-      List and manage custom validation rules
-
-    workflow [name] [source] [extra]
-      List, view, or create workflows
-
-    setup [--agent claude|codex|gemini|antigravity|cursor] [--file FILE] [--print] [--workflow WORKFLOW] [--overwrite]
-      Set up Cartograph for your AI agent (auto-detects and appends)
-
-    login [--token TOKEN] [--registry REGISTRY]
-      Authenticate with the Cartograph cloud registry
-
-    logout
-      Remove stored cloud credentials
-
-    whoami
-      Show current authenticated user
-
-    dashboard [--port 0] [--set-port SET_PORT] [--stop]
-      Open local widget dashboard in browser
-
-    export [--output OUTPUT]
-      Export widget library as a zip file
-
-    import <path> [--force]
-      Import widgets from a zip file into the library
-
-    stats
-      Show library statistics
-
-    doctor
-      Check language engine dependencies
-### Workflow
-
-Think in terms of widgets. Need to add capability, search for a widget.
-
-If you are adding a feature always consider whether it can be added into an existing widget. If not, consider if it could be added as a new widget.
-Only project specific wiring should not be made into widgets.
-
-1. Plan what components you need before building
-2. Decide whether new implementation can just be an improvement on currently used widgets. Read the widgets before deciding.
-3. Search the library before writing new logic
-4. Install widgets, then write glue code to connect them. Don't edit widget source directly for this step.
-5. If you do edit a widget, only do so if you intend to check it back in as an improvement for the general logic of the widget.
-6. Validate before checking in, check in before publishing
-
-Definition of reusable code: Any code that would be written for another project. A lot of code may look "project specific" but if you peel back the logic you will realize it can be used across many projects. These are the widgets that need to be extracted, or made.
+- All changes by PR; never push to the default branch. Only Ben merges or releases.
+- No `git reset --hard` / `git clean -f` over work that isn't yours; stash first.
+- No em dashes. Targeted tests on small changes, full suite before a PR is ready.
